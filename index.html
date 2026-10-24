@@ -385,7 +385,7 @@ function slotHTML(f, uid, c, fuera) {
   const e = entrada(f, uid, c), o = e && OPC_MAP[e.op];
   const lab = `<small>${c === "comida" ? "Comida" : "Cena"}</small>`;
   const data = `data-act="pick" data-f="${f}" data-u="${uid}" data-c="${c}"`;
-  if (o) return `<button class="slot" style="--c:var(--o-${o.k})" ${data}>${lab}<span>${o.e} ${o[c]}</span>${e.nota ? `<em>${esc(e.nota)}</em>` : ""}</button>`;
+  if (o) return `<button class="slot" style="--c:var(--o-${o.k})" ${data}>${lab}<span>${o.e} ${o[c]}${e.n > 1 ? ` (${e.n})` : ""}</span>${e.nota ? `<em>${esc(e.nota)}</em>` : ""}</button>`;
   return `<button class="slot ${fuera ? "fuera" : "vacio"}" ${data}>${lab}<span>${fuera ? "No vengo" : "Sin rellenar"}</span></button>`;
 }
 
@@ -411,7 +411,7 @@ function vMia() {
 /* --- Toda la casa --- */
 function resumen(f, c) {
   const cnt = { casa:0, tarde:0, tartera:0, bocadillo:0, no:0, otros:0 }; let vacio = 0, inv = 0;
-  for (const m of S.miembros) { const e = entrada(f, m.id, c); if (e && e.op in cnt) cnt[e.op]++; else if (!e && m.tipo !== "fuera") vacio++; }
+  for (const m of S.miembros) { const e = entrada(f, m.id, c); if (e && e.op in cnt) cnt[e.op] += Number(e.n) || 1; else if (!e && m.tipo !== "fuera") vacio++; }
   for (const g of Object.values(S.dias[f]?.inv || {})) if (g[c]) inv += Number(g.n) || 1;
   return { cnt, vacio, inv, enCasa: cnt.casa + cnt.tarde + inv };
 }
@@ -435,7 +435,7 @@ function listaDia(f, c) {
     const e = entrada(f, m.id, c), o = e && OPC_MAP[e.op];
     const sub = [e?.nota ? esc(e.nota) : "", e?.por && e.por !== m.id ? `Lo cambió ${esc(nombreDe(e.por))}` : ""].filter(Boolean).join(". ");
     return `<button class="fila" data-act="pick" data-f="${f}" data-u="${m.id}" data-c="${c}" ${puedeEditar(m.id) ? "" : "disabled"}>
-      <span class="n">${esc(m.nombre)}${sub ? `<small>${sub}</small>` : ""}</span>
+      <span class="n">${esc(m.nombre)}${e?.n > 1 ? ` (${e.n})` : ""}${sub ? `<small>${sub}</small>` : ""}</span>
       ${o ? `<span class="tag" style="--c:var(--o-${o.k})">${o.e} ${o[c]}</span>` : `<span class="tag vacio">Sin rellenar</span>`}</button>`;
   });
   for (const g of Object.values(S.dias[f]?.inv || {})) if (g[c])
@@ -505,7 +505,7 @@ function vAdmin() {
 
 /* ---------- Acciones ---------- */
 async function guardarSlot(f, uid, c, val) {
-  const v = val ? { op: val.op, nota: val.nota || "", por: S.uid, ts: serverTimestamp() } : deleteField();
+  const v = val ? { op: val.op, nota: val.nota || "", n: Math.max(1, Number(val.n) || 1), por: S.uid, ts: serverTimestamp() } : deleteField();
   try { await setDoc(doc(db, "planilla_dias", f), { r: { [uid]: { [c]: v } } }, { merge: true }); }
   catch (e) { toast(e.code === "permission-denied" ? "No puedes cambiar esta casilla." : "No se pudo guardar (" + e.code + ")."); }
 }
@@ -518,7 +518,7 @@ async function copiarAnterior() {
     const b = writeBatch(db); let n = 0;
     for (let i = 0; i < 7; i++) {
       const fa = iso(addDays(lp, i)), f = iso(addDays(S.lunes, i)), src = prev[fa]?.r?.[S.uid] || {}, upd = {};
-      for (const c of COMIDAS) if (src[c] && !entrada(f, S.uid, c)) { upd[c] = { op: src[c].op, nota: src[c].nota || "", por: S.uid, ts: serverTimestamp() }; n++; }
+      for (const c of COMIDAS) if (src[c] && !entrada(f, S.uid, c)) { upd[c] = { op: src[c].op, nota: src[c].nota || "", n: src[c].n || 1, por: S.uid, ts: serverTimestamp() }; n++; }
       if (Object.keys(upd).length) b.set(doc(db, "planilla_dias", f), { r: { [S.uid]: upd } }, { merge: true });
     }
     if (!n) { toast("La semana anterior no tiene nada que copiar en tus huecos."); return; }
@@ -542,25 +542,30 @@ function abrirPicker(f, uid, c) {
   if (!puedeEditar(uid)) return;
   const m = S.miembros.find(x => x.id === uid), e = entrada(f, uid, c), fuera = m?.tipo === "fuera";
   const quien = uid === S.uid ? (c === "comida" ? "Tu comida" : "Tu cena") : `${c === "comida" ? "Comida" : "Cena"} de ${esc(m?.nombre || "")}`;
+  let n = Number(e?.n) || 1;
+  const contador = fuera ? `<div class="campo" style="margin:0 0 14px;font-weight:600;font-size:14px">Cuántos venís
+      <div class="stepper"><button data-g="-1" aria-label="Uno menos">−</button><output id="pk-n">${n}</output><button data-g="1" aria-label="Uno más">+</button></div></div>` : "";
   const ops = OPC.map(o => `<button class="op ${e?.op === o.k ? "on" : ""}" data-op="${o.k}" style="--c:var(--o-${o.k})"><span class="em">${o.e}</span>${o[c]}</button>`).join("");
   abrirSheet(`<h3>${quien}</h3><p class="sub">${fechaLarga(f)}</p>
-    <div class="ops">${ops}</div>
+    ${contador}<div class="ops">${ops}</div>
     <div id="pk-notabox" ${e?.op === "otros" ? "" : "hidden"}>
       <label class="campo">Nota<input id="pk-nota" maxlength="80" value="${esc(e?.nota || "")}" placeholder="Ej.: como a las 16:00 en casa de la abuela"></label>
       <button class="btn prim ancho" style="margin-top:10px" data-act="pk-ok">Guardar</button></div>
     <div class="pie">${e ? `<button class="btn quitar" data-act="pk-quitar">${fuera ? "No vengo" : "Dejar sin rellenar"}</button>` : ""}
       <button class="btn" data-act="cerrar">Cancelar</button></div>`,
   (ev, v) => {
+    const st = ev.target.closest("[data-g]");
+    if (st) { n = Math.max(1, Math.min(20, n + Number(st.dataset.g))); v.querySelector("#pk-n").textContent = n; return; }
     const op = ev.target.closest(".op");
     if (op) {
       if (op.dataset.op === "otros") {
         v.querySelectorAll(".op").forEach(x => x.classList.toggle("on", x === op));
         v.querySelector("#pk-notabox").hidden = false; v.querySelector("#pk-nota").focus(); return;
       }
-      cerrarSheet(); guardarSlot(f, uid, c, { op: op.dataset.op }); return;
+      cerrarSheet(); guardarSlot(f, uid, c, { op: op.dataset.op, n }); return;
     }
     const a = ev.target.closest("[data-act]")?.dataset.act;
-    if (a === "pk-ok") { const nota = v.querySelector("#pk-nota").value.trim(); cerrarSheet(); guardarSlot(f, uid, c, { op: "otros", nota }); }
+    if (a === "pk-ok") { const nota = v.querySelector("#pk-nota").value.trim(); cerrarSheet(); guardarSlot(f, uid, c, { op: "otros", nota, n }); }
     if (a === "pk-quitar") { cerrarSheet(); guardarSlot(f, uid, c, null); }
   });
 }
