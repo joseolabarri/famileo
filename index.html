@@ -3,21 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Famileo</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1F4E8C">
+<title>OlApp</title>
+<link rel="manifest" id="lnk-manifest" href="manifest.json">
+<meta name="theme-color" content="#0F7A66">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" id="lnk-apple" href="icons/icon-apple.png">
+<script>
+  // Cada hermano instala OlApp con su propio icono (JOA, DOA…)
+  (function () { try { var s = localStorage.getItem("olapp-icono"); if (s) {
+    document.getElementById("lnk-manifest").href = "manifest-" + s + ".json";
+    document.getElementById("lnk-apple").href = "icons/icon-" + s + "-apple.png"; } } catch (e) {} })();
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Famileo">
+<meta name="apple-mobile-web-app-title" content="OlApp">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --azul:#1F4E8C; --sobre-azul:#fff; --azafran:#F2B33D; --tomate:#D64933;
+  --azul:#0F7A66; --sobre-azul:#fff; --azafran:#F2B33D; --tomate:#D64933;
   --fondo:#EEF2F7; --papel:#fff; --tinta:#1B2433; --suave:#5B6577; --linea:#D6DEEA; --hoy:#FFF4D9;
   --o-casa:#2E8B57; --o-tarde:#B57A00; --o-tartera:#1F4E8C; --o-bocadillo:#9C6B3C; --o-no:#6F7A8C; --o-otros:#7B5EA7;
   color-scheme:light;
@@ -27,7 +33,7 @@
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --azul:#7AA8EA; --sobre-azul:#0F1724; --fondo:#0F1724; --papel:#182234; --tinta:#E8EDF5; --suave:#9AA6BA;
+    --azul:#5CC9AE; --sobre-azul:#0F1724; --fondo:#0F1724; --papel:#182234; --tinta:#E8EDF5; --suave:#9AA6BA;
     --linea:#2A3752; --hoy:#2B2817;
     --o-casa:#4CC38A; --o-tarde:#E8B33A; --o-tartera:#7AA8EA; --o-bocadillo:#C8956A; --o-no:#8D97AA; --o-otros:#A98BDA;
     color-scheme:dark;
@@ -43,13 +49,13 @@ button{font:inherit;color:inherit}
 :focus-visible{outline:3px solid var(--azafran);outline-offset:2px}
 
 /* Franja de azulejo: la seña de identidad */
-.azulejo{height:18px;background-color:#1F4E8C;
+.azulejo{height:18px;background-color:#0F7A66;
   background-image:
     radial-gradient(circle at 50% 50%,#fff 0 3px,transparent 3.5px),
-    radial-gradient(circle at 0 0,#F2B33D 0 5px,transparent 5.5px),
-    radial-gradient(circle at 100% 0,#F2B33D 0 5px,transparent 5.5px),
-    radial-gradient(circle at 0 100%,#F2B33D 0 5px,transparent 5.5px),
-    radial-gradient(circle at 100% 100%,#F2B33D 0 5px,transparent 5.5px);
+    radial-gradient(circle at 0 0,#FFC850 0 5px,transparent 5.5px),
+    radial-gradient(circle at 100% 0,#FFC850 0 5px,transparent 5.5px),
+    radial-gradient(circle at 0 100%,#FFC850 0 5px,transparent 5.5px),
+    radial-gradient(circle at 100% 100%,#FFC850 0 5px,transparent 5.5px);
   background-size:18px 18px}
 
 .marca{font-weight:800;font-size:30px;letter-spacing:-.025em;color:var(--azul);margin:0;line-height:1}
@@ -187,6 +193,7 @@ body.modo-q .marca{font-size:22px}
 /* Entrada */
 .login{max-width:380px;margin:0 auto;padding:56px 22px}
 .login .marca{font-size:56px}
+.logo-login{width:96px;height:96px;border-radius:22px;display:block;margin:0 0 18px;box-shadow:0 8px 24px rgba(15,122,102,.25)}
 .login .lema{color:var(--suave);margin:8px 0 26px;font-size:17px}
 .login .btn{margin-top:20px}
 .err{color:var(--tomate);font-weight:600;margin:12px 0 0}
@@ -269,6 +276,7 @@ onAuthStateChanged(auth, async u => {
   limpiar();
   if (!u) { pintarLogin(); return; }
   S.uid = u.uid;
+  ponerIcono(u.email);
   try {
     const p = await getDoc(doc(db, "participantes", u.uid));
     S.esJugador = p.exists();
@@ -289,7 +297,17 @@ onAuthStateChanged(auth, async u => {
   render();
 });
 
-/* Al pulsar una notificación se abre Famileo con #quiniela, #casa o #mia */
+const ICONOS = { javi:"javier", dani:"daniel", leti:"leticia", andres:"andres", tomas:"tomas",
+                 luis:"luis", jorge:"jorge", jose:"jose", cristina:"cristina", fernando:"fernando" };
+function ponerIcono(email) {
+  const u = (email || "").split("@")[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const s = ICONOS[u] || "";
+  try { s ? localStorage.setItem("olapp-icono", s) : localStorage.removeItem("olapp-icono"); } catch {}
+  document.getElementById("lnk-manifest").href = s ? `manifest-${s}.json` : "manifest.json";
+  document.getElementById("lnk-apple").href = s ? `icons/icon-${s}-apple.png` : "icons/icon-apple.png";
+}
+
+/* Al pulsar una notificación se abre OlApp con #quiniela, #casa o #mia */
 function irAlEnlace() {
   const h = location.hash.slice(1);
   if (!h || !S.uid || !$("#view")) return;
@@ -336,8 +354,8 @@ function bloqueAvisos() {
   switch (S.avisos) {
     case "pendiente": return `<button class="btn prim ancho" data-act="avisos" style="margin-bottom:12px">🔔 Activar avisos en este móvil</button>`;
     case "activados": return `<p class="pista" style="margin:0 0 12px">🔔 Avisos activados en este dispositivo.</p>`;
-    case "bloqueados": return `<div class="aviso"><p>Has bloqueado los avisos de Famileo. Para recibirlos, permite las notificaciones de esta app en los ajustes del móvil.</p></div>`;
-    case "ios-instalar": return `<div class="aviso"><p>Para recibir avisos en el iPhone, instala Famileo en la pantalla de inicio (desde Safari: Compartir y «Añadir a pantalla de inicio») y ábrela desde ahí.</p></div>`;
+    case "bloqueados": return `<div class="aviso"><p>Has bloqueado los avisos de OlApp. Para recibirlos, permite las notificaciones de esta app en los ajustes del móvil.</p></div>`;
+    case "ios-instalar": return `<div class="aviso"><p>Para recibir avisos en el iPhone, instala OlApp en la pantalla de inicio (desde Safari: Compartir y «Añadir a pantalla de inicio») y ábrela desde ahí.</p></div>`;
     default: return "";
   }
 }
@@ -374,8 +392,9 @@ function cambiarSemana(n) { S.lunes = addDays(S.lunes, 7*n); S.diaSel = null; es
 function pintarLogin() {
   document.body.innerHTML = `<div class="azulejo"></div>
   <main class="login">
-    <h1 class="marca">Famileo</h1>
-    <p class="lema">La app de la familia.</p>
+    <img class="logo-login" src="icons/icon-512.png" alt="">
+    <h1 class="marca">OlApp</h1>
+    <p class="lema">La app de los Olábarri Azagra.</p>
     <form id="flogin" novalidate>
       <label class="campo">Usuario<input id="lu" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
       <label class="campo">Contraseña<input id="lp" type="password" autocomplete="current-password" required></label>
@@ -400,8 +419,8 @@ function pintarLogin() {
 
 function pintarSinAlta() {
   document.body.innerHTML = `<div class="azulejo"></div>
-  <main class="login"><h1 class="marca">Famileo</h1>
-    <p class="lema">Tu usuario todavía no está dado de alta en Famileo. Pídele a José que te añada.</p>
+  <main class="login"><h1 class="marca">OlApp</h1>
+    <p class="lema">Tu usuario todavía no está dado de alta en OlApp. Pídele a José que te añada.</p>
     <button class="btn ancho" data-act="salir">Salir</button></main>`;
 }
 
@@ -409,7 +428,7 @@ function pintarApp() {
   document.body.innerHTML = `
   <header class="cab"><div class="azulejo"></div>
     <div class="fila1">
-      <div class="izq"><button class="volver" id="volver" data-v="hub">‹ Inicio</button><h1 class="marca" id="titulo">Famileo</h1></div>
+      <div class="izq"><button class="volver" id="volver" data-v="hub">‹ Inicio</button><h1 class="marca" id="titulo">OlApp</h1></div>
       <div class="yo" id="yo"><span id="yo-n"></span><button class="lnk" data-act="salir">Salir</button></div></div>
     <div class="seg" id="seg"><button data-v="mia">Mi semana</button><button data-v="casa">Toda la casa</button></div>
   </header>
@@ -433,7 +452,7 @@ function render() {
   $("#yo-n").textContent = S.yo?.nombre || S.nombreQ || "";
   $("#yo").hidden = v !== "hub";
   $("#volver").hidden = v === "hub";
-  $("#titulo").textContent = { hub:"Famileo", admin:"Ajustes", quiniela:"La Quiniela" }[v] || "La Planilla";
+  $("#titulo").textContent = { hub:"OlApp", admin:"Ajustes", quiniela:"La Quiniela" }[v] || "La Planilla";
   $("#seg").hidden = !enPlanilla || !S.yo;
   document.querySelectorAll("#seg button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
   document.body.classList.toggle("modo-q", q);
@@ -487,10 +506,10 @@ function vHub() {
   const tiles = [];
   if (S.yo) tiles.push(`<button class="tile t-plan" data-v="mia"><span class="ti-ic">🍽️</span><span class="ti-t">La Planilla</span><span class="ti-s">${esc(estadoPlanilla())}</span></button>`);
   if (S.esJugador) tiles.push(`<button class="tile t-quin" data-v="quiniela"><span class="ti-ic">⚽</span><span class="ti-t">La Quiniela</span><span class="ti-s">${esc(estadoQuiniela())}</span></button>`);
-  return `<p class="saludo">${nombre ? `Hola, ${esc(nombre)}` : "Hola"}</p>
+  return bannerInstalar() + `<p class="saludo">${nombre ? `Hola, ${esc(nombre)}` : "Hola"}</p>
     <div class="tiles">${tiles.join("")}</div>
     ${bloqueAvisos()}
-    ${S.esAdmin ? `<button class="btn ancho" data-v="admin">⚙️ Ajustes de Famileo</button>` : ""}`;
+    ${S.esAdmin ? `<button class="btn ancho" data-v="admin">⚙️ Ajustes de OlApp</button>` : ""}`;
 }
 
 function semNav() {
@@ -511,7 +530,7 @@ window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); prompt
 const enApp = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 function bannerInstalar() {
   if (enApp() || lsGet("fam-inst-oculto")) return "";
-  if (promptInst) return `<div class="aviso"><p>Instala Famileo en el móvil para tenerla a mano.</p>
+  if (promptInst) return `<div class="aviso"><p>Instala OlApp en el móvil para tenerla a mano.</p>
     <div><button class="btn prim" data-act="instalar">Instalar</button> <button class="lnk" data-act="cerrar-inst">Ahora no</button></div></div>`;
   if (/iphone|ipad|ipod/i.test(navigator.userAgent)) return `<div class="aviso"><p>Para instalarla en el iPhone: abre esta página en Safari, toca el botón Compartir y elige «Añadir a pantalla de inicio».</p>
     <button class="lnk" data-act="cerrar-inst">Entendido</button></div>`;
@@ -543,7 +562,7 @@ function vMia() {
       <div class="dname"><b>${DIAS[i]}</b><span>${d.getDate()} ${MES_C[d.getMonth()]}</span>${esHoy ? `<br><span class="hoytag">Hoy</span>` : ""}</div>
       <div class="slots">${slotHTML(f, S.uid, "comida", fuera)}${slotHTML(f, S.uid, "cena", fuera)}</div></li>`;
   }).join("");
-  return semNav() + bannerInstalar() + aviso + `<ol class="semana">${filas}</ol>`;
+  return semNav() + aviso + `<ol class="semana">${filas}</ol>`;
 }
 
 /* --- Toda la casa --- */
@@ -625,10 +644,10 @@ function vAdmin() {
     : S.parts.length
       ? `<div class="filas">${S.parts.map(p => `<div class="prow"><span>${esc(p.nombre || p.usuario || p.id)}</span>
           <button class="btn" data-act="add-part" data-id="${p.id}">Añadir</button></div>`).join("")}</div>`
-      : `<p class="pista">Todos los jugadores de la quiniela ya están en Famileo.</p>`;
+      : `<p class="pista">Todos los jugadores de la quiniela ya están en OlApp.</p>`;
   const nu = S.nu;
   return `${faltoYo}
-  <section class="bloque"><h2>Familia en Famileo</h2>
+  <section class="bloque"><h2>Familia en OlApp</h2>
     <div class="filas">${filas || `<p class="vacio-txt">Todavía no hay nadie. Empieza añadiendo gente desde la quiniela.</p>`}</div></section>
   <section class="bloque"><h2>Añadir desde la quiniela</h2>${parts}</section>
   <section class="bloque"><h2>Crear un usuario nuevo</h2>
@@ -760,13 +779,13 @@ async function anadirParticipante(id) {
   const p = S.parts.find(x => x.id === id); if (!p) return;
   try {
     await setDoc(doc(db, "famileo_miembros", id), { nombre: p.nombre || p.usuario || "Sin nombre", usuario: p.usuario || "", tipo: "casa", editora: false, orden: S.miembros.length + 1 });
-    S.parts = S.parts.filter(x => x.id !== id); toast(`${p.nombre || p.usuario || "Añadido"} ya está en Famileo.`);
+    S.parts = S.parts.filter(x => x.id !== id); toast(`${p.nombre || p.usuario || "Añadido"} ya está en OlApp.`);
   } catch (e) { toast("No se pudo añadir (" + e.code + ")."); }
 }
 
 async function quitarMiembro(id) {
   const m = S.miembros.find(x => x.id === id);
-  if (!confirm(`¿Quitar a ${m?.nombre} de Famileo? Su usuario sigue existiendo y podrás volver a añadirlo.`)) return;
+  if (!confirm(`¿Quitar a ${m?.nombre} de OlApp? Su usuario sigue existiendo y podrás volver a añadirlo.`)) return;
   try { await deleteDoc(doc(db, "famileo_miembros", id)); S.parts = null; }
   catch (e) { toast("No se pudo quitar (" + e.code + ")."); }
 }

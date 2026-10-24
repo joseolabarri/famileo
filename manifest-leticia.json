@@ -1,0 +1,30 @@
+{
+  "id": "./",
+  "name": "OlApp",
+  "short_name": "OlApp",
+  "description": "La app de los Olábarri Azagra.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0B5F52",
+  "theme_color": "#0F7A66",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icons/icon-leticia-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-leticia-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-leticia-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

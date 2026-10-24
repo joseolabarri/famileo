@@ -1,4 +1,4 @@
-// Famileo – service worker
+// OlApp – service worker
 // 1) Recibe los avisos (Firebase Cloud Messaging) aunque la app esté cerrada.
 // 2) Permite instalar la app y abrirla sin conexión.
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
@@ -12,9 +12,9 @@ firebase.initializeApp({
   messagingSenderId: "65100035401",
   appId: "1:65100035401:web:75d584e436b03b6a461698"
 });
-firebase.messaging(); // muestra el aviso y, al pulsarlo, abre Famileo en el enlace que trae
+firebase.messaging(); // muestra el aviso y, al pulsarlo, abre OlApp en el enlace que trae
 
-const CACHE = "famileo-v2";
+const CACHE = "olapp-v3";
 const BASE = ["./", "./index.html", "./manifest.json", "./icons/icon-192.png"];
 
 self.addEventListener("install", e => {
