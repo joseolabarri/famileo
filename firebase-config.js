@@ -1,11 +1,8 @@
-// Configuración de Firebase de Famileo.
-// Sustituye el bloque de abajo por el de la quiniela, manteniendo la palabra "export" delante.
-// Este archivo solo se sube una vez: las próximas versiones de index.html ya no lo tocan.
 export const firebaseConfig = {
-  apiKey: "PEGA_AQUI",
-  authDomain: "PEGA_AQUI",
-  projectId: "PEGA_AQUI",
-  storageBucket: "PEGA_AQUI",
-  messagingSenderId: "PEGA_AQUI",
-  appId: "PEGA_AQUI"
+  apiKey: "AIzaSyDeBiZJ4gHZF4sVRq00yPnSRAWMzS0P4As",
+  authDomain: "quiniela-2026-2027.firebaseapp.com",
+  projectId: "quiniela-2026-2027",
+  storageBucket: "quiniela-2026-2027.firebasestorage.app",
+  messagingSenderId: "65100035401",
+  appId: "1:65100035401:web:75d584e436b03b6a461698"
 };
