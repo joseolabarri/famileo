@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Famileo</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1F4E8C">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Famileo">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --azul:#1F4E8C; --sobre-azul:#fff; --azafran:#F2B33D; --tomate:#D64933;
+  --fondo:#EEF2F7; --papel:#fff; --tinta:#1B2433; --suave:#5B6577; --linea:#D6DEEA; --hoy:#FFF4D9;
+  --o-casa:#2E8B57; --o-tarde:#B57A00; --o-tartera:#1F4E8C; --o-bocadillo:#9C6B3C; --o-no:#6F7A8C; --o-otros:#7B5EA7;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --azul:#7AA8EA; --sobre-azul:#0F1724; --fondo:#0F1724; --papel:#182234; --tinta:#E8EDF5; --suave:#9AA6BA;
+    --linea:#2A3752; --hoy:#2B2817;
+    --o-casa:#4CC38A; --o-tarde:#E8B33A; --o-tartera:#7AA8EA; --o-bocadillo:#C8956A; --o-no:#8D97AA; --o-otros:#A98BDA;
+    color-scheme:dark;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{height:100%}
+body{margin:0;min-height:100%;background:var(--fondo);color:var(--tinta);
+  font:16px/1.45 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--azafran);outline-offset:2px}
+
+/* Franja de azulejo: la seña de identidad */
+.azulejo{height:18px;background-color:#1F4E8C;
+  background-image:
+    radial-gradient(circle at 50% 50%,#fff 0 3px,transparent 3.5px),
+    radial-gradient(circle at 0 0,#F2B33D 0 5px,transparent 5.5px),
+    radial-gradient(circle at 100% 0,#F2B33D 0 5px,transparent 5.5px),
+    radial-gradient(circle at 0 100%,#F2B33D 0 5px,transparent 5.5px),
+    radial-gradient(circle at 100% 100%,#F2B33D 0 5px,transparent 5.5px);
+  background-size:18px 18px}
+
+.marca{font-weight:800;font-size:30px;letter-spacing:-.025em;color:var(--azul);margin:0;line-height:1}
+.cab{background:var(--papel);border-bottom:1px solid var(--linea)}
+.cab .fila1{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px 12px;max-width:720px;margin:0 auto}
+.yo{font-size:14px;color:var(--suave);display:flex;gap:6px;align-items:center}
+.lnk{background:none;border:0;color:var(--azul);font-weight:600;cursor:pointer;padding:6px 4px}
+.lnk.peligro{color:var(--tomate)}
+.seg{display:flex;gap:6px;max-width:720px;margin:0 auto;padding:0 18px 14px}
+.seg button{flex:1;border:1px solid var(--linea);background:var(--fondo);font-weight:600;padding:10px;border-radius:10px;cursor:pointer}
+.seg button.on{background:var(--azul);border-color:var(--azul);color:var(--sobre-azul)}
+
+main.vista{max-width:720px;margin:0 auto;padding:16px 16px 100px}
+
+.sem{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px}
+.sem button{flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--linea);background:var(--papel);font-size:24px;line-height:1;cursor:pointer}
+.sem .t{text-align:center}
+.sem .t b{display:block;font-size:19px;font-weight:800;letter-spacing:-.01em}
+.sem .t span{font-size:14px;color:var(--suave)}
+
+.aviso{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;padding:12px 14px;border-radius:12px;margin-bottom:14px;background:var(--papel);border:1px solid var(--linea)}
+.aviso p{margin:0;flex:1 1 220px}
+.aviso.mal{border:1.5px solid var(--tomate)}
+.aviso.ok p::before{content:"✓ ";color:var(--o-casa);font-weight:800}
+
+.btn{border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;background:var(--fondo);border:1px solid var(--linea)}
+.btn.prim{background:var(--azul);color:var(--sobre-azul);border-color:var(--azul)}
+.btn.ancho{width:100%}
+.btn:disabled{opacity:.6;cursor:wait}
+
+/* Mi semana */
+.semana{list-style:none;margin:0;padding:0;background:var(--papel);border:1px solid var(--linea);border-radius:16px;overflow:hidden}
+.dia{display:grid;grid-template-columns:78px 1fr;gap:10px;padding:12px;border-top:1px solid var(--linea);align-items:start}
+.dia:first-child{border-top:0}
+.dia.hoy{background:var(--hoy)}
+.dia.pasado{opacity:.55}
+.dname b{display:block;font-size:15px}
+.dname span{font-size:13px;color:var(--suave)}
+.dname .hoytag{display:inline-block;margin-top:4px;font-size:12px;font-weight:700;color:#5a4300;background:var(--azafran);padding:1px 8px;border-radius:999px}
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.slot{text-align:left;border:1px solid var(--linea);border-left:5px solid var(--c,var(--linea));background:var(--papel);border-radius:10px;padding:8px 10px;cursor:pointer;min-height:58px;min-width:0}
+.slot small{display:block;font-size:12px;color:var(--suave)}
+.slot span{font-weight:600;font-size:15px}
+.slot em{display:block;font-size:12px;color:var(--suave);font-style:normal;overflow-wrap:anywhere}
+.slot.vacio{border:1.5px dashed var(--tomate)}
+.slot.vacio span{color:var(--tomate)}
+.dia.pasado .slot.vacio{border-color:var(--linea)}
+.dia.pasado .slot.vacio span{color:var(--suave)}
+.slot.fuera span{color:var(--suave);font-weight:400}
+
+/* Toda la casa */
+.chips{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:16px}
+.chip{position:relative;border:1px solid var(--linea);background:var(--papel);border-radius:12px;padding:8px 0;cursor:pointer;text-align:center}
+.chip b{display:block;font-size:13px;color:var(--suave);font-weight:600}
+.chip span{font-size:18px;font-weight:800}
+.chip.on{background:var(--azul);border-color:var(--azul);color:var(--sobre-azul)}
+.chip.on b{color:inherit}
+.chip.hoy:not(.on){border:2px solid var(--azafran)}
+.chip i{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--tomate)}
+.titdia{font-size:22px;font-weight:800;letter-spacing:-.015em;margin:0 0 12px}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.res > div{background:var(--papel);border:1px solid var(--linea);border-radius:14px;padding:14px}
+.res h3{margin:0;font-size:15px;color:var(--suave);font-weight:600}
+.res .num{font-size:46px;font-weight:800;line-height:1;color:var(--azul);margin:8px 0 0;letter-spacing:-.03em}
+.res .lab{font-size:14px;margin:2px 0 0}
+.res ul{list-style:none;padding:0;margin:10px 0 0;font-size:14px;display:flex;flex-direction:column;gap:3px}
+.res .warn{color:var(--tomate);font-weight:600}
+.bloque{margin-bottom:18px}
+.bloque h2{font-size:18px;font-weight:800;margin:0 0 8px}
+.filas{background:var(--papel);border:1px solid var(--linea);border-radius:14px;overflow:hidden;margin-bottom:10px}
+.fila{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border:0;border-top:1px solid var(--linea);background:none;text-align:left;cursor:pointer}
+.fila:first-child{border-top:0}
+.fila:disabled{cursor:default}
+.fila .n{font-weight:600;min-width:0}
+.fila .n small{display:block;font-weight:400;color:var(--suave);font-size:13px;overflow-wrap:anywhere}
+.tag{flex:none;white-space:nowrap;font-size:14px;font-weight:600;padding:4px 10px;border-radius:999px;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent)}
+.tag.vacio{--c:var(--tomate);background:none;border:1.5px dashed var(--tomate)}
+.vacio-txt{color:var(--suave);padding:12px 14px;margin:0}
+
+/* Hoja inferior */
+.velo{position:fixed;inset:0;background:rgba(10,20,35,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.hoja{background:var(--papel);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom,0px));max-height:90vh;overflow:auto;animation:sube .18s ease-out}
+@keyframes sube{from{transform:translateY(24px);opacity:.4}}
+@media (prefers-reduced-motion:reduce){.hoja{animation:none}}
+.hoja h3{margin:0;font-size:21px;font-weight:800}
+.hoja .sub{margin:2px 0 14px;color:var(--suave)}
+.ops{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.op{display:flex;align-items:center;gap:8px;padding:14px 12px;border-radius:12px;border:1.5px solid var(--linea);background:var(--papel);font-weight:600;cursor:pointer;text-align:left}
+.op.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent)}
+.op .em{font-size:20px}
+.pie{display:flex;gap:8px;margin-top:14px}
+.pie .btn{flex:1}
+.btn.quitar{color:var(--tomate);border-color:var(--tomate);background:none}
+label.campo{display:block;margin:12px 0 0;font-weight:600;font-size:14px}
+input,select{font:inherit;color:var(--tinta);background:var(--fondo);border:1px solid var(--linea);border-radius:10px;padding:10px 12px;width:100%;margin-top:4px}
+input[type=checkbox]{width:20px;height:20px;margin:0;accent-color:var(--azul)}
+.checks{display:flex;gap:18px;margin-top:14px}
+.checks label,label.chk{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+.stepper{display:flex;align-items:center;gap:14px;margin-top:6px}
+.stepper button{width:44px;height:44px;border-radius:50%;border:1px solid var(--linea);background:var(--fondo);font-size:22px;cursor:pointer}
+.stepper output{font-size:22px;font-weight:800;min-width:2ch;text-align:center}
+
+/* Navegación inferior */
+.nav{position:fixed;left:0;right:0;bottom:0;background:var(--papel);border-top:1px solid var(--linea);display:flex;justify-content:center;gap:8px;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));z-index:10}
+.nav button{flex:0 1 180px;border:0;background:none;border-radius:10px;padding:10px;font-weight:600;color:var(--suave);cursor:pointer}
+.nav button.on{background:var(--fondo);color:var(--azul)}
+
+/* Ajustes */
+.mrow{display:grid;grid-template-columns:1fr auto;gap:8px;padding:12px 14px;border-top:1px solid var(--linea);align-items:center}
+.mrow:first-child{border-top:0}
+.mrow input.m-nom{margin:0;font-weight:600}
+.mrow .ctl{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.mrow select{width:auto;margin:0}
+.mrow input.ord{width:64px;margin:0}
+.usr{font-size:13px;color:var(--suave)}
+.prow{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-top:1px solid var(--linea)}
+.prow:first-child{border-top:0}
+.panel{background:var(--papel);border:1px solid var(--linea);border-radius:14px;padding:4px 14px 16px}
+
+/* Entrada */
+.login{max-width:380px;margin:0 auto;padding:56px 22px}
+.login .marca{font-size:56px}
+.login .lema{color:var(--suave);margin:8px 0 26px;font-size:17px}
+.login .btn{margin-top:20px}
+.err{color:var(--tomate);font-weight:600;margin:12px 0 0}
+.pista{color:var(--suave);font-size:14px;margin-top:18px}
+
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tinta);color:var(--papel);padding:10px 16px;border-radius:10px;font-size:14px;z-index:30;max-width:90vw;text-align:center}
+@media (max-width:380px){ .dia{grid-template-columns:1fr} .res .num{font-size:38px} }
+</style>
+</head>
+<body>
+<div class="azulejo"></div>
+
+<script type="module">
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, onSnapshot, query, where,
+  documentId, serverTimestamp, deleteField, writeBatch }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDeBiZJ4gHZF4sVRq00yPnSRAWMzS0P4As",
+  authDomain: "quiniela-2026-2027.firebaseapp.com",
+  projectId: "quiniela-2026-2027",
+  storageBucket: "quiniela-2026-2027.firebasestorage.app",
+  messagingSenderId: "65100035401",
+  appId: "1:65100035401:web:75d584e436b03b6a461698"
+};
+
+const DOMINIO = "@laquiniela.app";
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* ---------- Datos fijos ---------- */
+const OPC = [
+  { k:"casa",      e:"🍽️", comida:"Como",       cena:"Ceno" },
+  { k:"tarde",     e:"🕑",  comida:"Como tarde", cena:"Ceno tarde" },
+  { k:"tartera",   e:"🥡",  comida:"Tartera",    cena:"Tartera" },
+  { k:"bocadillo", e:"🥪",  comida:"Bocadillo",  cena:"Bocadillo" },
+  { k:"no",        e:"✖️",  comida:"No como",    cena:"No ceno" },
+  { k:"otros",     e:"📝",  comida:"Otros",      cena:"Otros" },
+];
+const OPC_MAP = Object.fromEntries(OPC.map(o => [o.k, o]));
+const COMIDAS = ["comida", "cena"];
+const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const DIAS_C = ["L","M","X","J","V","S","D"];
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const MES_C = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+
+/* ---------- Estado ---------- */
+const S = { uid:null, yo:null, esAdmin:false, miembros:[], lunes:null, dias:{}, vista:"mia", diaSel:null,
+            unsubDias:null, unsubMiem:null, parts:null, nu:{ u:"", n:"", p:"", t:"casa" } };
+
+/* ---------- Utilidades ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const deIso = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const lunesDe = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - (x.getDay()+6)%7); return x; };
+const hoyIso = () => iso(new Date());
+const fechasSemana = () => [...Array(7)].map((_, i) => iso(addDays(S.lunes, i)));
+const fechaLarga = f => { const d = deIso(f); return `${DIAS[(d.getDay()+6)%7]} ${d.getDate()} de ${MESES[d.getMonth()]}`; };
+const entrada = (f, uid, c) => S.dias[f]?.r?.[uid]?.[c] || null;
+const nombreDe = uid => S.miembros.find(m => m.id === uid)?.nombre || "otra persona";
+const puedeEditar = uid => uid === S.uid || S.esAdmin || S.yo?.editora === true;
+const deCasa = () => S.miembros.filter(m => m.tipo !== "fuera");
+const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+
+let tT;
+function toast(m) {
+  let t = $("#toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.className = "toast"; t.setAttribute("role","status"); document.body.appendChild(t); }
+  t.textContent = m; t.hidden = false; clearTimeout(tT); tT = setTimeout(() => t.hidden = true, 3200);
+}
+
+/* ---------- Sesión ---------- */
+onAuthStateChanged(auth, async u => {
+  limpiar();
+  if (!u) { pintarLogin(); return; }
+  S.uid = u.uid;
+  try { const p = await getDoc(doc(db, "participantes", u.uid)); S.esAdmin = p.exists() && p.data().esAdmin === true; } catch { S.esAdmin = false; }
+  try { const d = await getDoc(doc(db, "famileo_miembros", u.uid)); S.yo = d.exists() ? { id:d.id, ...d.data() } : null; } catch { S.yo = null; }
+  if (!S.yo && !S.esAdmin) { pintarSinAlta(); return; }
+  const hoy = new Date();
+  S.lunes = lunesDe(hoy.getDay() === 0 ? addDays(hoy, 1) : hoy); // el domingo ya se mira la semana siguiente
+  S.vista = S.yo ? "mia" : "admin";
+  pintarApp();
+  escucharMiembros();
+  if (S.yo) escucharSemana();
+});
+
+function limpiar() {
+  S.unsubDias?.(); S.unsubMiem?.();
+  Object.assign(S, { uid:null, yo:null, esAdmin:false, miembros:[], dias:{}, unsubDias:null, unsubMiem:null, parts:null, diaSel:null });
+  cerrarSheet();
+}
+
+function escucharMiembros() {
+  S.unsubMiem = onSnapshot(collection(db, "famileo_miembros"), snap => {
+    S.miembros = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+      .sort((a, b) => (a.orden ?? 99) - (b.orden ?? 99) || String(a.nombre).localeCompare(b.nombre));
+    S.yo = S.miembros.find(m => m.id === S.uid) || null;
+    if (S.yo && !S.unsubDias) escucharSemana();
+    render();
+  }, err => toast("No se pudo cargar la familia (" + err.code + ")"));
+}
+
+function escucharSemana() {
+  S.unsubDias?.();
+  const f = fechasSemana();
+  S.dias = {};
+  const q = query(collection(db, "planilla_dias"), where(documentId(), ">=", f[0]), where(documentId(), "<=", f[6]));
+  S.unsubDias = onSnapshot(q, snap => {
+    S.dias = {}; snap.forEach(d => S.dias[d.id] = d.data()); render();
+  }, err => toast("No se pudo cargar la planilla (" + err.code + ")"));
+}
+
+function cambiarSemana(n) { S.lunes = addDays(S.lunes, 7*n); S.diaSel = null; escucharSemana(); render(); }
+
+/* ---------- Pantallas de entrada ---------- */
+function pintarLogin() {
+  document.body.innerHTML = `<div class="azulejo"></div>
+  <main class="login">
+    <h1 class="marca">Famileo</h1>
+    <p class="lema">Quién come y quién cena en casa, semana a semana.</p>
+    <form id="flogin" novalidate>
+      <label class="campo">Usuario<input id="lu" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
+      <label class="campo">Contraseña<input id="lp" type="password" autocomplete="current-password" required></label>
+      <p class="err" id="lerr" hidden></p>
+      <button class="btn prim ancho" type="submit">Entrar</button>
+    </form>
+    <p class="pista">Si juegas a la quiniela, es el mismo usuario y la misma contraseña.</p>
+  </main>`;
+  $("#flogin").addEventListener("submit", async e => {
+    e.preventDefault();
+    const u = $("#lu").value.trim().toLowerCase(), p = $("#lp").value, err = $("#lerr"), b = e.target.querySelector("button");
+    if (!u || !p) { err.textContent = "Escribe tu usuario y tu contraseña."; err.hidden = false; return; }
+    b.disabled = true; err.hidden = true;
+    try { await signInWithEmailAndPassword(auth, u + DOMINIO, p); }
+    catch (x) {
+      const malos = ["auth/invalid-credential","auth/wrong-password","auth/user-not-found","auth/invalid-email"];
+      err.textContent = malos.includes(x.code) ? "Usuario o contraseña incorrectos." : "No se pudo entrar (" + x.code + ").";
+      err.hidden = false; b.disabled = false;
+    }
+  });
+}
+
+function pintarSinAlta() {
+  document.body.innerHTML = `<div class="azulejo"></div>
+  <main class="login"><h1 class="marca">Famileo</h1>
+    <p class="lema">Tu usuario todavía no está dado de alta en Famileo. Pídele a José que te añada.</p>
+    <button class="btn ancho" data-act="salir">Salir</button></main>`;
+}
+
+function pintarApp() {
+  document.body.innerHTML = `
+  <header class="cab"><div class="azulejo"></div>
+    <div class="fila1"><h1 class="marca">Famileo</h1>
+      <div class="yo"><span id="yo-n"></span><button class="lnk" data-act="salir">Salir</button></div></div>
+    <div class="seg" id="seg"><button data-v="mia">Mi semana</button><button data-v="casa">Toda la casa</button></div>
+  </header>
+  <main class="vista" id="view"></main>
+  ${S.esAdmin ? `<nav class="nav" id="nav"><button data-v="mia">🗓️ La Planilla</button><button data-v="admin">⚙️ Ajustes</button></nav>` : ""}`;
+  render();
+}
+
+/* ---------- Render ---------- */
+function render() {
+  const view = $("#view"); if (!view) return;
+  const v = S.vista, enPlanilla = v === "mia" || v === "casa";
+  $("#yo-n").textContent = S.yo?.nombre || "";
+  $("#seg").hidden = !enPlanilla || !S.yo;
+  document.querySelectorAll("#seg button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.v === "admin" ? v === "admin" : enPlanilla));
+  if (v === "admin") view.innerHTML = vAdmin();
+  else if (!S.yo) view.innerHTML = `<div class="aviso mal"><p>Añádete a la familia en Ajustes para ver la planilla.</p></div>`;
+  else view.innerHTML = v === "casa" ? vCasa() : vMia();
+}
+
+function semNav() {
+  const a = S.lunes, b = addDays(a, 6);
+  const rango = a.getMonth() === b.getMonth()
+    ? `${a.getDate()} – ${b.getDate()} de ${MESES[b.getMonth()]}`
+    : `${a.getDate()} ${MES_C[a.getMonth()]} – ${b.getDate()} ${MES_C[b.getMonth()]}`;
+  const diff = Math.round((a - lunesDe(new Date())) / 864e5 / 7);
+  const t = { 0:"Esta semana", 1:"Semana que viene", "-1":"Semana pasada" }[diff] || "";
+  return `<div class="sem"><button data-act="prev" aria-label="Semana anterior">‹</button>
+    <div class="t"><b>${t || rango}</b>${t ? `<span>${rango}</span>` : ""}</div>
+    <button data-act="next" aria-label="Semana siguiente">›</button></div>`;
+}
+
+/* Instalación en el móvil */
+let promptInst = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); promptInst = e; render(); });
+const enApp = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+function bannerInstalar() {
+  if (enApp() || lsGet("fam-inst-oculto")) return "";
+  if (promptInst) return `<div class="aviso"><p>Instala Famileo en el móvil para tenerla a mano.</p>
+    <div><button class="btn prim" data-act="instalar">Instalar</button> <button class="lnk" data-act="cerrar-inst">Ahora no</button></div></div>`;
+  if (/iphone|ipad|ipod/i.test(navigator.userAgent)) return `<div class="aviso"><p>Para instalarla en el iPhone: abre esta página en Safari, toca el botón Compartir y elige «Añadir a pantalla de inicio».</p>
+    <button class="lnk" data-act="cerrar-inst">Entendido</button></div>`;
+  return "";
+}
+
+/* --- Mi semana --- */
+function slotHTML(f, uid, c, fuera) {
+  const e = entrada(f, uid, c), o = e && OPC_MAP[e.op];
+  const lab = `<small>${c === "comida" ? "Comida" : "Cena"}</small>`;
+  const data = `data-act="pick" data-f="${f}" data-u="${uid}" data-c="${c}"`;
+  if (o) return `<button class="slot" style="--c:var(--o-${o.k})" ${data}>${lab}<span>${o.e} ${o[c]}</span>${e.nota ? `<em>${esc(e.nota)}</em>` : ""}</button>`;
+  return `<button class="slot ${fuera ? "fuera" : "vacio"}" ${data}>${lab}<span>${fuera ? "No vengo" : "Sin rellenar"}</span></button>`;
+}
+
+function vMia() {
+  const fuera = S.yo.tipo === "fuera", hoy = hoyIso(), fs = fechasSemana();
+  let huecos = 0;
+  if (!fuera) for (const f of fs) if (f >= hoy) for (const c of COMIDAS) if (!entrada(f, S.uid, c)) huecos++;
+  const aviso = fuera
+    ? `<div class="aviso"><p>Apúntate los días que vengas a comer o a cenar.</p></div>`
+    : huecos
+      ? `<div class="aviso mal"><p>${huecos === 1 ? "Te falta 1 casilla" : `Te faltan ${huecos} casillas`} por rellenar.</p>
+         <button class="btn" data-act="copiar">Copiar semana anterior</button></div>`
+      : `<div class="aviso ok"><p>Tienes la semana completa.</p></div>`;
+  const filas = fs.map((f, i) => {
+    const d = deIso(f), esHoy = f === hoy;
+    return `<li class="dia ${esHoy ? "hoy" : ""} ${f < hoy ? "pasado" : ""}">
+      <div class="dname"><b>${DIAS[i]}</b><span>${d.getDate()} ${MES_C[d.getMonth()]}</span>${esHoy ? `<br><span class="hoytag">Hoy</span>` : ""}</div>
+      <div class="slots">${slotHTML(f, S.uid, "comida", fuera)}${slotHTML(f, S.uid, "cena", fuera)}</div></li>`;
+  }).join("");
+  return semNav() + bannerInstalar() + aviso + `<ol class="semana">${filas}</ol>`;
+}
+
+/* --- Toda la casa --- */
+function resumen(f, c) {
+  const cnt = { casa:0, tarde:0, tartera:0, bocadillo:0, no:0, otros:0 }; let vacio = 0, inv = 0;
+  for (const m of S.miembros) { const e = entrada(f, m.id, c); if (e && e.op in cnt) cnt[e.op]++; else if (!e && m.tipo !== "fuera") vacio++; }
+  for (const g of Object.values(S.dias[f]?.inv || {})) if (g[c]) inv += Number(g.n) || 1;
+  return { cnt, vacio, inv, enCasa: cnt.casa + cnt.tarde + inv };
+}
+
+function cajaResumen(f, c) {
+  const r = resumen(f, c), li = [];
+  if (r.inv) li.push(`👥 ${r.inv} invitado${r.inv > 1 ? "s" : ""}`);
+  if (r.cnt.tarde) li.push(`🕑 ${r.cnt.tarde} tarde`);
+  if (r.cnt.tartera) li.push(`🥡 ${r.cnt.tartera} tartera`);
+  if (r.cnt.bocadillo) li.push(`🥪 ${r.cnt.bocadillo} bocadillo`);
+  if (r.cnt.otros) li.push(`📝 ${r.cnt.otros} otros`);
+  if (r.cnt.no) li.push(`✖️ ${r.cnt.no} no ${c === "comida" ? "comen" : "cenan"}`);
+  return `<div><h3>${c === "comida" ? "Comida" : "Cena"}</h3>
+    <p class="num">${r.enCasa}</p><p class="lab">${c === "comida" ? "comen" : "cenan"} en casa</p>
+    <ul>${li.map(x => `<li>${x}</li>`).join("")}${r.vacio ? `<li class="warn">⚠️ ${r.vacio} sin rellenar</li>` : ""}</ul></div>`;
+}
+
+function listaDia(f, c) {
+  const ms = S.miembros.filter(m => m.tipo !== "fuera" || entrada(f, m.id, c));
+  const filas = ms.map(m => {
+    const e = entrada(f, m.id, c), o = e && OPC_MAP[e.op];
+    const sub = [e?.nota ? esc(e.nota) : "", e?.por && e.por !== m.id ? `Lo cambió ${esc(nombreDe(e.por))}` : ""].filter(Boolean).join(". ");
+    return `<button class="fila" data-act="pick" data-f="${f}" data-u="${m.id}" data-c="${c}" ${puedeEditar(m.id) ? "" : "disabled"}>
+      <span class="n">${esc(m.nombre)}${sub ? `<small>${sub}</small>` : ""}</span>
+      ${o ? `<span class="tag" style="--c:var(--o-${o.k})">${o.e} ${o[c]}</span>` : `<span class="tag vacio">Sin rellenar</span>`}</button>`;
+  });
+  for (const g of Object.values(S.dias[f]?.inv || {})) if (g[c])
+    filas.push(`<div class="fila" role="presentation"><span class="n">${esc(g.nombre)}${g.n > 1 ? ` (${g.n})` : ""}<small>Invitado</small></span>
+      <span class="tag" style="--c:var(--o-casa)">🍽️ ${c === "comida" ? "Come" : "Cena"}</span></div>`);
+  return `<section class="bloque"><h2>${c === "comida" ? "Comida" : "Cena"}</h2>
+    <div class="filas">${filas.join("") || `<p class="vacio-txt">Nadie apuntado.</p>`}</div></section>`;
+}
+
+function vCasa() {
+  const fs = fechasSemana(), hoy = hoyIso();
+  if (!S.diaSel || !fs.includes(S.diaSel)) S.diaSel = fs.includes(hoy) ? hoy : fs[0];
+  const f = S.diaSel;
+  const chips = fs.map((x, i) => {
+    const gap = x >= hoy && deCasa().some(m => COMIDAS.some(c => !entrada(x, m.id, c)));
+    return `<button class="chip ${x === f ? "on" : ""} ${x === hoy ? "hoy" : ""}" data-act="dia" data-f="${x}" aria-label="${fechaLarga(x)}${gap ? ", con casillas sin rellenar" : ""}">
+      <b>${DIAS_C[i]}</b><span>${deIso(x).getDate()}</span>${gap ? "<i></i>" : ""}</button>`;
+  }).join("");
+  const invs = Object.entries(S.dias[f]?.inv || {}).sort((a, b) => (a[1].ts?.seconds || 0) - (b[1].ts?.seconds || 0));
+  const invFilas = invs.map(([id, g]) => `<div class="fila" role="presentation">
+      <span class="n">${esc(g.nombre)}${g.n > 1 ? ` (${g.n})` : ""}<small>${g.comida && g.cena ? "Comida y cena" : g.comida ? "Comida" : "Cena"}${g.por ? `. Lo apuntó ${esc(nombreDe(g.por))}` : ""}</small></span>
+      <button class="lnk peligro" data-act="inv-del" data-f="${f}" data-id="${id}">Quitar</button></div>`).join("");
+  return semNav() + `<div class="chips">${chips}</div><h2 class="titdia">${fechaLarga(f)}</h2>
+    <div class="res">${cajaResumen(f, "comida")}${cajaResumen(f, "cena")}</div>
+    ${listaDia(f, "comida")}${listaDia(f, "cena")}
+    <section class="bloque"><h2>Invitados</h2>
+      ${invFilas ? `<div class="filas">${invFilas}</div>` : ""}
+      <button class="btn ancho" data-act="inv-add" data-f="${f}">Añadir invitado</button></section>`;
+}
+
+/* --- Ajustes (solo admin) --- */
+function vAdmin() {
+  const filas = S.miembros.map(m => `<div class="mrow">
+      <input class="m-nom" data-id="${m.id}" value="${esc(m.nombre)}" aria-label="Nombre">
+      <button class="lnk peligro" data-act="quitar-m" data-id="${m.id}">Quitar</button>
+      <div class="ctl">
+        <select class="m-tipo" data-id="${m.id}" aria-label="Dónde vive">
+          <option value="casa" ${m.tipo !== "fuera" ? "selected" : ""}>Vive en casa</option>
+          <option value="fuera" ${m.tipo === "fuera" ? "selected" : ""}>Viene de fuera</option></select>
+        <label class="chk"><input type="checkbox" class="m-ed" data-id="${m.id}" ${m.editora ? "checked" : ""}> Edita a todos</label>
+        <label class="chk">Orden <input type="number" class="m-ord ord" data-id="${m.id}" value="${m.orden ?? ""}" min="0" inputmode="numeric"></label>
+        <span class="usr">Usuario: ${esc(m.usuario || "")}</span></div></div>`).join("");
+  const faltoYo = !S.miembros.some(m => m.id === S.uid)
+    ? `<div class="aviso mal"><p>Tú todavía no estás en la lista. Añádete desde la quiniela para ver la planilla.</p></div>` : "";
+  const parts = S.parts === null
+    ? `<button class="btn ancho" data-act="cargar-parts">Ver jugadores de la quiniela</button>`
+    : S.parts.length
+      ? `<div class="filas">${S.parts.map(p => `<div class="prow"><span>${esc(p.nombre || p.usuario || p.id)}</span>
+          <button class="btn" data-act="add-part" data-id="${p.id}">Añadir</button></div>`).join("")}</div>`
+      : `<p class="pista">Todos los jugadores de la quiniela ya están en Famileo.</p>`;
+  const nu = S.nu;
+  return `${faltoYo}
+  <section class="bloque"><h2>Familia en Famileo</h2>
+    <div class="filas">${filas || `<p class="vacio-txt">Todavía no hay nadie. Empieza añadiendo gente desde la quiniela.</p>`}</div></section>
+  <section class="bloque"><h2>Añadir desde la quiniela</h2>${parts}</section>
+  <section class="bloque"><h2>Crear un usuario nuevo</h2>
+    <div class="panel">
+      <label class="campo">Nombre que se verá<input id="nu-n" value="${esc(nu.n)}" placeholder="Papá"></label>
+      <label class="campo">Usuario para entrar<input id="nu-u" value="${esc(nu.u)}" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="papa"></label>
+      <label class="campo">Contraseña (mínimo 6 caracteres)<input id="nu-p" value="${esc(nu.p)}" autocomplete="new-password"></label>
+      <label class="campo">Dónde vive<select id="nu-t">
+        <option value="casa" ${nu.t === "casa" ? "selected" : ""}>Vive en casa</option>
+        <option value="fuera" ${nu.t === "fuera" ? "selected" : ""}>Viene de fuera</option></select></label>
+      <button class="btn prim ancho" style="margin-top:16px" data-act="crear">Crear usuario</button>
+    </div></section>`;
+}
+
+/* ---------- Acciones ---------- */
+async function guardarSlot(f, uid, c, val) {
+  const v = val ? { op: val.op, nota: val.nota || "", por: S.uid, ts: serverTimestamp() } : deleteField();
+  try { await setDoc(doc(db, "planilla_dias", f), { r: { [uid]: { [c]: v } } }, { merge: true }); }
+  catch (e) { toast(e.code === "permission-denied" ? "No puedes cambiar esta casilla." : "No se pudo guardar (" + e.code + ")."); }
+}
+
+async function copiarAnterior() {
+  const lp = addDays(S.lunes, -7);
+  try {
+    const snap = await getDocs(query(collection(db, "planilla_dias"), where(documentId(), ">=", iso(lp)), where(documentId(), "<=", iso(addDays(lp, 6)))));
+    const prev = {}; snap.forEach(d => prev[d.id] = d.data());
+    const b = writeBatch(db); let n = 0;
+    for (let i = 0; i < 7; i++) {
+      const fa = iso(addDays(lp, i)), f = iso(addDays(S.lunes, i)), src = prev[fa]?.r?.[S.uid] || {}, upd = {};
+      for (const c of COMIDAS) if (src[c] && !entrada(f, S.uid, c)) { upd[c] = { op: src[c].op, nota: src[c].nota || "", por: S.uid, ts: serverTimestamp() }; n++; }
+      if (Object.keys(upd).length) b.set(doc(db, "planilla_dias", f), { r: { [S.uid]: upd } }, { merge: true });
+    }
+    if (!n) { toast("La semana anterior no tiene nada que copiar en tus huecos."); return; }
+    await b.commit(); toast(n === 1 ? "Copiada 1 casilla." : `Copiadas ${n} casillas.`);
+  } catch (e) { toast("No se pudo copiar (" + e.code + ")."); }
+}
+
+/* Hoja inferior */
+const escKey = e => { if (e.key === "Escape") cerrarSheet(); };
+function abrirSheet(html, handler) {
+  cerrarSheet();
+  const v = document.createElement("div"); v.className = "velo"; v.id = "velo";
+  v.innerHTML = `<div class="hoja" role="dialog" aria-modal="true">${html}</div>`;
+  v.addEventListener("click", e => { if (e.target === v || e.target.closest('[data-act="cerrar"]')) { cerrarSheet(); return; } handler(e, v); });
+  document.body.appendChild(v); document.addEventListener("keydown", escKey);
+  v.querySelector("button, input")?.focus({ preventScroll: true });
+}
+function cerrarSheet() { $("#velo")?.remove(); document.removeEventListener("keydown", escKey); }
+
+function abrirPicker(f, uid, c) {
+  if (!puedeEditar(uid)) return;
+  const m = S.miembros.find(x => x.id === uid), e = entrada(f, uid, c), fuera = m?.tipo === "fuera";
+  const quien = uid === S.uid ? (c === "comida" ? "Tu comida" : "Tu cena") : `${c === "comida" ? "Comida" : "Cena"} de ${esc(m?.nombre || "")}`;
+  const ops = OPC.map(o => `<button class="op ${e?.op === o.k ? "on" : ""}" data-op="${o.k}" style="--c:var(--o-${o.k})"><span class="em">${o.e}</span>${o[c]}</button>`).join("");
+  abrirSheet(`<h3>${quien}</h3><p class="sub">${fechaLarga(f)}</p>
+    <div class="ops">${ops}</div>
+    <div id="pk-notabox" ${e?.op === "otros" ? "" : "hidden"}>
+      <label class="campo">Nota<input id="pk-nota" maxlength="80" value="${esc(e?.nota || "")}" placeholder="Ej.: como a las 16:00 en casa de la abuela"></label>
+      <button class="btn prim ancho" style="margin-top:10px" data-act="pk-ok">Guardar</button></div>
+    <div class="pie">${e ? `<button class="btn quitar" data-act="pk-quitar">${fuera ? "No vengo" : "Dejar sin rellenar"}</button>` : ""}
+      <button class="btn" data-act="cerrar">Cancelar</button></div>`,
+  (ev, v) => {
+    const op = ev.target.closest(".op");
+    if (op) {
+      if (op.dataset.op === "otros") {
+        v.querySelectorAll(".op").forEach(x => x.classList.toggle("on", x === op));
+        v.querySelector("#pk-notabox").hidden = false; v.querySelector("#pk-nota").focus(); return;
+      }
+      cerrarSheet(); guardarSlot(f, uid, c, { op: op.dataset.op }); return;
+    }
+    const a = ev.target.closest("[data-act]")?.dataset.act;
+    if (a === "pk-ok") { const nota = v.querySelector("#pk-nota").value.trim(); cerrarSheet(); guardarSlot(f, uid, c, { op: "otros", nota }); }
+    if (a === "pk-quitar") { cerrarSheet(); guardarSlot(f, uid, c, null); }
+  });
+}
+
+function abrirInvitado(f) {
+  let n = 1;
+  abrirSheet(`<h3>Añadir invitado</h3><p class="sub">${fechaLarga(f)}</p>
+    <label class="campo">Quién viene<input id="g-nom" maxlength="40" placeholder="Tío Juan"></label>
+    <div class="campo" style="margin-top:12px;font-weight:600;font-size:14px">Cuántas personas
+      <div class="stepper"><button data-g="-1" aria-label="Una menos">−</button><output id="g-n">1</output><button data-g="1" aria-label="Una más">+</button></div></div>
+    <div class="checks"><label><input type="checkbox" id="g-com" checked> Comida</label><label><input type="checkbox" id="g-cen"> Cena</label></div>
+    <div class="pie"><button class="btn" data-act="cerrar">Cancelar</button><button class="btn prim" data-act="g-ok">Añadir</button></div>`,
+  async (ev, v) => {
+    const st = ev.target.closest("[data-g]");
+    if (st) { n = Math.max(1, Math.min(20, n + Number(st.dataset.g))); v.querySelector("#g-n").textContent = n; return; }
+    if (ev.target.closest('[data-act="g-ok"]')) {
+      const nombre = v.querySelector("#g-nom").value.trim(), comida = v.querySelector("#g-com").checked, cena = v.querySelector("#g-cen").checked;
+      if (!nombre) { toast("Escribe quién viene."); return; }
+      if (!comida && !cena) { toast("Marca comida, cena o las dos."); return; }
+      cerrarSheet();
+      const id = Date.now().toString(36);
+      try { await setDoc(doc(db, "planilla_dias", f), { inv: { [id]: { nombre, n, comida, cena, por: S.uid, ts: serverTimestamp() } } }, { merge: true }); }
+      catch (e) { toast("No se pudo añadir (" + e.code + ")."); }
+    }
+  });
+}
+
+async function borrarInvitado(f, id) {
+  const g = S.dias[f]?.inv?.[id];
+  if (!confirm(`¿Quitar a ${g?.nombre || "este invitado"}?`)) return;
+  try { await setDoc(doc(db, "planilla_dias", f), { inv: { [id]: deleteField() } }, { merge: true }); }
+  catch (e) { toast("No se pudo quitar (" + e.code + ")."); }
+}
+
+async function cargarParticipantes() {
+  try {
+    const snap = await getDocs(collection(db, "participantes"));
+    S.parts = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => !S.miembros.some(m => m.id === p.id));
+    render();
+  } catch (e) { toast("No se pudo leer la quiniela (" + e.code + ")."); }
+}
+
+async function anadirParticipante(id) {
+  const p = S.parts.find(x => x.id === id); if (!p) return;
+  try {
+    await setDoc(doc(db, "famileo_miembros", id), { nombre: p.nombre || p.usuario || "Sin nombre", usuario: p.usuario || "", tipo: "casa", editora: false, orden: S.miembros.length + 1 });
+    S.parts = S.parts.filter(x => x.id !== id); toast(`${p.nombre || p.usuario || "Añadido"} ya está en Famileo.`);
+  } catch (e) { toast("No se pudo añadir (" + e.code + ")."); }
+}
+
+async function quitarMiembro(id) {
+  const m = S.miembros.find(x => x.id === id);
+  if (!confirm(`¿Quitar a ${m?.nombre} de Famileo? Su usuario sigue existiendo y podrás volver a añadirlo.`)) return;
+  try { await deleteDoc(doc(db, "famileo_miembros", id)); S.parts = null; }
+  catch (e) { toast("No se pudo quitar (" + e.code + ")."); }
+}
+
+async function crearUsuario() {
+  const { u, n, p, t } = S.nu, usuario = u.trim().toLowerCase();
+  if (!/^[a-z0-9._-]{2,}$/.test(usuario)) { toast("Usuario: solo minúsculas, números, punto o guion."); return; }
+  if (p.length < 6) { toast("La contraseña necesita al menos 6 caracteres."); return; }
+  const sec = getApps().find(a => a.name === "alta") || initializeApp(firebaseConfig, "alta");
+  const sa = getAuth(sec);
+  try {
+    const cred = await createUserWithEmailAndPassword(sa, usuario + DOMINIO, p);
+    await setDoc(doc(db, "famileo_miembros", cred.user.uid), { nombre: n.trim() || usuario, usuario, tipo: t, editora: false, orden: S.miembros.length + 1 });
+    await signOut(sa);
+    S.nu = { u:"", n:"", p:"", t:"casa" };
+    toast(`Listo: ${n.trim() || usuario} ya puede entrar con el usuario «${usuario}».`); render();
+  } catch (e) {
+    toast(e.code === "auth/email-already-in-use" ? "Ese usuario ya existe: añádelo desde la lista de la quiniela." : "No se pudo crear (" + e.code + ").");
+  }
+}
+
+/* ---------- Eventos globales ---------- */
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-act],[data-v]");
+  if (!b || b.closest(".hoja")) return;
+  if (b.dataset.v) { S.vista = b.dataset.v; render(); scrollTo(0, 0); return; }
+  const d = b.dataset;
+  switch (d.act) {
+    case "prev": cambiarSemana(-1); break;
+    case "next": cambiarSemana(1); break;
+    case "pick": abrirPicker(d.f, d.u, d.c); break;
+    case "dia": S.diaSel = d.f; render(); break;
+    case "copiar": copiarAnterior(); break;
+    case "inv-add": abrirInvitado(d.f); break;
+    case "inv-del": borrarInvitado(d.f, d.id); break;
+    case "instalar": if (promptInst) { promptInst.prompt(); promptInst.userChoice.finally(() => { promptInst = null; render(); }); } break;
+    case "cerrar-inst": lsSet("fam-inst-oculto", "1"); render(); break;
+    case "salir": signOut(auth); break;
+    case "cargar-parts": cargarParticipantes(); break;
+    case "add-part": anadirParticipante(d.id); break;
+    case "quitar-m": quitarMiembro(d.id); break;
+    case "crear": crearUsuario(); break;
+  }
+});
+
+document.addEventListener("input", ev => {
+  const k = { "nu-u":"u", "nu-n":"n", "nu-p":"p", "nu-t":"t" }[ev.target.id];
+  if (k) S.nu[k] = ev.target.value;
+});
+
+document.addEventListener("change", async ev => {
+  const t = ev.target, id = t.dataset.id; if (!id) return;
+  let upd = null;
+  if (t.classList.contains("m-nom")) upd = { nombre: t.value.trim() || "Sin nombre" };
+  else if (t.classList.contains("m-tipo")) upd = { tipo: t.value };
+  else if (t.classList.contains("m-ed")) upd = { editora: t.checked };
+  else if (t.classList.contains("m-ord")) upd = { orden: Number(t.value) || 0 };
+  if (!upd) return;
+  try { await updateDoc(doc(db, "famileo_miembros", id), upd); toast("Guardado."); }
+  catch (e) { toast("No se pudo guardar (" + e.code + ")."); }
+});
+
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+</script>
+</body>
+</html>
