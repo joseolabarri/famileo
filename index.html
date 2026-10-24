@@ -192,14 +192,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
   documentId, serverTimestamp, deleteField, writeBatch }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDeBiZJ4gHZF4sVRq00yPnSRAWMzS0P4As",
-  authDomain: "quiniela-2026-2027.firebaseapp.com",
-  projectId: "quiniela-2026-2027",
-  storageBucket: "quiniela-2026-2027.firebasestorage.app",
-  messagingSenderId: "65100035401",
-  appId: "1:65100035401:web:75d584e436b03b6a461698"
-};
+import { firebaseConfig } from "./firebase-config.js"; // tu configuración vive en ese archivo
 
 const DOMINIO = "@laquiniela.app";
 const app = initializeApp(firebaseConfig);
@@ -441,8 +434,10 @@ function listaDia(f, c) {
   for (const g of Object.values(S.dias[f]?.inv || {})) if (g[c])
     filas.push(`<div class="fila" role="presentation"><span class="n">${esc(g.nombre)}${g.n > 1 ? ` (${g.n})` : ""}<small>Invitado</small></span>
       <span class="tag" style="--c:var(--o-casa)">🍽️ ${c === "comida" ? "Come" : "Cena"}</span></div>`);
+  const sinApuntar = (S.esAdmin || S.yo?.editora) ? S.miembros.filter(m => m.tipo === "fuera" && !entrada(f, m.id, c)) : [];
   return `<section class="bloque"><h2>${c === "comida" ? "Comida" : "Cena"}</h2>
-    <div class="filas">${filas.join("") || `<p class="vacio-txt">Nadie apuntado.</p>`}</div></section>`;
+    <div class="filas">${filas.join("") || `<p class="vacio-txt">Nadie apuntado.</p>`}</div>
+    ${sinApuntar.length ? `<button class="btn ancho" data-act="apuntar-fuera" data-f="${f}" data-c="${c}">Apuntar a alguien de fuera</button>` : ""}</section>`;
 }
 
 function vCasa() {
@@ -593,6 +588,14 @@ function abrirInvitado(f) {
   });
 }
 
+function abrirApuntarFuera(f, c) {
+  const lista = S.miembros.filter(m => m.tipo === "fuera" && !entrada(f, m.id, c));
+  abrirSheet(`<h3>¿Quién viene a ${c === "comida" ? "comer" : "cenar"}?</h3><p class="sub">${fechaLarga(f)}</p>
+    <div class="filas">${lista.map(m => `<button class="fila" data-u="${m.id}"><span class="n">${esc(m.nombre)}</span></button>`).join("")}</div>
+    <div class="pie"><button class="btn" data-act="cerrar">Cancelar</button></div>`,
+  ev => { const b = ev.target.closest("[data-u]"); if (b) abrirPicker(f, b.dataset.u, c); });
+}
+
 async function borrarInvitado(f, id) {
   const g = S.dias[f]?.inv?.[id];
   if (!confirm(`¿Quitar a ${g?.nombre || "este invitado"}?`)) return;
@@ -653,6 +656,7 @@ document.addEventListener("click", ev => {
     case "dia": S.diaSel = d.f; render(); break;
     case "copiar": copiarAnterior(); break;
     case "inv-add": abrirInvitado(d.f); break;
+    case "apuntar-fuera": abrirApuntarFuera(d.f, d.c); break;
     case "inv-del": borrarInvitado(d.f, d.id); break;
     case "instalar": if (promptInst) { promptInst.prompt(); promptInst.userChoice.finally(() => { promptInst = null; render(); }); } break;
     case "cerrar-inst": lsSet("fam-inst-oculto", "1"); render(); break;
