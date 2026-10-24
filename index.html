@@ -207,7 +207,9 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
   documentId, serverTimestamp, deleteField, writeBatch }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+import { getMessaging, getToken, onMessage, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 import { firebaseConfig } from "./firebase-config.js"; // tu configuración vive en ese archivo
+const VAPID = "BPfPNA4a51VairRg_5nJYCCYEaHJJJMXjc_eW02lfTkF6N13Nj72wkyzQO2gZHXykmiAeHLqxFEXdo56wa1F1ZU";
 
 const DOMINIO = "@laquiniela.app";
 const QUINIELA_URL = "/Quiniela-2026-2027/"; // dirección de la quiniela en GitHub Pages
@@ -281,11 +283,68 @@ onAuthStateChanged(auth, async u => {
   escucharMiembros();
   if (S.yo) escucharSemana();
   if (S.esJugador) cargarEstadoQuiniela();
+  irAlEnlace();
+  S.avisos = await estadoAvisos();
+  if (S.avisos === "activados") guardarToken().catch(() => {});
+  render();
 });
+
+/* Al pulsar una notificación se abre Famileo con #quiniela, #casa o #mia */
+function irAlEnlace() {
+  const h = location.hash.slice(1);
+  if (!h || !S.uid || !$("#view")) return;
+  if (h === "quiniela" && S.esJugador) setVista("quiniela");
+  else if ((h === "casa" || h === "mia") && S.yo) setVista(h);
+  history.replaceState(null, "", location.pathname);
+}
+
+/* ---------- Avisos (notificaciones) ---------- */
+async function estadoAvisos() {
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  let ok = false; try { ok = ("Notification" in window) && "serviceWorker" in navigator && await isSupported(); } catch {}
+  if (!ok) return ios && !enApp() ? "ios-instalar" : "no-soportado";
+  if (Notification.permission === "denied") return "bloqueados";
+  if (Notification.permission === "granted") return "activados";
+  return "pendiente";
+}
+
+async function guardarToken() {
+  const reg = await navigator.serviceWorker.ready;
+  const messaging = getMessaging(app);
+  const token = await getToken(messaging, { vapidKey: VAPID, serviceWorkerRegistration: reg });
+  if (!token) throw new Error("sin-token");
+  await setDoc(doc(db, "famileo_tokens", token), { uid: S.uid, ts: serverTimestamp(), disp: navigator.userAgent.slice(0, 120) });
+  S.token = token;
+  if (!S.escuchaAvisos) { S.escuchaAvisos = true; onMessage(messaging, p => toast(`${p.notification?.title || ""}. ${p.notification?.body || ""}`)); }
+}
+
+async function activarAvisos() {
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") { S.avisos = perm === "denied" ? "bloqueados" : "pendiente"; render(); return; }
+    await guardarToken();
+    S.avisos = "activados"; toast("Avisos activados en este dispositivo."); render();
+  } catch (e) { toast("No se pudieron activar los avisos (" + (e.code || e.message) + ")."); }
+}
+
+async function salir() {
+  if (S.token) { try { await deleteDoc(doc(db, "famileo_tokens", S.token)); } catch {} }
+  signOut(auth);
+}
+
+function bloqueAvisos() {
+  switch (S.avisos) {
+    case "pendiente": return `<button class="btn prim ancho" data-act="avisos" style="margin-bottom:12px">🔔 Activar avisos en este móvil</button>`;
+    case "activados": return `<p class="pista" style="margin:0 0 12px">🔔 Avisos activados en este dispositivo.</p>`;
+    case "bloqueados": return `<div class="aviso"><p>Has bloqueado los avisos de Famileo. Para recibirlos, permite las notificaciones de esta app en los ajustes del móvil.</p></div>`;
+    case "ios-instalar": return `<div class="aviso"><p>Para recibir avisos en el iPhone, instala Famileo en la pantalla de inicio (desde Safari: Compartir y «Añadir a pantalla de inicio») y ábrela desde ahí.</p></div>`;
+    default: return "";
+  }
+}
 
 function limpiar() {
   S.unsubDias?.(); S.unsubMiem?.();
-  Object.assign(S, { uid:null, yo:null, esAdmin:false, miembros:[], dias:{}, unsubDias:null, unsubMiem:null, parts:null, diaSel:null, esJugador:false, nombreQ:"", q:null, vista:"hub" });
+  Object.assign(S, { uid:null, yo:null, esAdmin:false, miembros:[], dias:{}, unsubDias:null, unsubMiem:null, parts:null, diaSel:null, esJugador:false, nombreQ:"", q:null, vista:"hub", avisos:null, token:null });
   cerrarSheet();
 }
 
@@ -430,6 +489,7 @@ function vHub() {
   if (S.esJugador) tiles.push(`<button class="tile t-quin" data-v="quiniela"><span class="ti-ic">⚽</span><span class="ti-t">La Quiniela</span><span class="ti-s">${esc(estadoQuiniela())}</span></button>`);
   return `<p class="saludo">${nombre ? `Hola, ${esc(nombre)}` : "Hola"}</p>
     <div class="tiles">${tiles.join("")}</div>
+    ${bloqueAvisos()}
     ${S.esAdmin ? `<button class="btn ancho" data-v="admin">⚙️ Ajustes de Famileo</button>` : ""}`;
 }
 
@@ -745,7 +805,8 @@ document.addEventListener("click", ev => {
     case "inv-del": borrarInvitado(d.f, d.id); break;
     case "instalar": if (promptInst) { promptInst.prompt(); promptInst.userChoice.finally(() => { promptInst = null; render(); }); } break;
     case "cerrar-inst": lsSet("fam-inst-oculto", "1"); render(); break;
-    case "salir": signOut(auth); break;
+    case "salir": salir(); break;
+    case "avisos": activarAvisos(); break;
     case "cargar-parts": cargarParticipantes(); break;
     case "add-part": anadirParticipante(d.id); break;
     case "quitar-m": quitarMiembro(d.id); break;
@@ -770,7 +831,8 @@ document.addEventListener("change", async ev => {
   catch (e) { toast("No se pudo guardar (" + e.code + ")."); }
 });
 
-if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+addEventListener("hashchange", irAlEnlace);
 </script>
 </body>
 </html>
