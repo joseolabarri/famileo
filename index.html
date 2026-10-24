@@ -152,10 +152,25 @@ input[type=checkbox]{width:20px;height:20px;margin:0;accent-color:var(--azul)}
 .stepper button{width:44px;height:44px;border-radius:50%;border:1px solid var(--linea);background:var(--fondo);font-size:22px;cursor:pointer}
 .stepper output{font-size:22px;font-weight:800;min-width:2ch;text-align:center}
 
-/* Navegación inferior */
-.nav{position:fixed;left:0;right:0;bottom:0;background:var(--papel);border-top:1px solid var(--linea);display:flex;justify-content:center;gap:8px;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));z-index:10}
-.nav button{flex:0 1 180px;border:0;background:none;border-radius:10px;padding:10px;font-weight:600;color:var(--suave);cursor:pointer}
-.nav button.on{background:var(--fondo);color:var(--azul)}
+/* Panel de apps */
+.cab .izq{display:flex;align-items:center;gap:10px;min-width:0}
+.volver{background:none;border:0;color:var(--azul);font-weight:700;font-size:15px;cursor:pointer;padding:6px 6px 6px 0;white-space:nowrap}
+.saludo{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:8px 0 18px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;border:0;border-radius:22px;padding:18px 16px 16px;min-height:180px;cursor:pointer;color:#fff;position:relative;overflow:hidden}
+.tile::after{content:"";position:absolute;left:0;right:0;top:0;height:10px;opacity:.9;
+  background-image:radial-gradient(circle at 50% 50%,#fff 0 2px,transparent 2.5px);background-size:10px 10px}
+.t-plan{background:#1F4E8C}
+.t-quin{background:#B8322A}
+.ti-ic{font-size:36px;line-height:1;margin-top:6px}
+.ti-t{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-top:auto}
+.ti-s{font-size:14px;line-height:1.3;opacity:.95}
+@media (max-width:360px){ .tiles{grid-template-columns:1fr} .tile{min-height:130px} }
+body.modo-q{height:100%;overflow:hidden;display:flex;flex-direction:column}
+body.modo-q .cab .fila1{padding:8px 14px}
+body.modo-q .marca{font-size:22px}
+#qwrap{flex:1;display:flex;min-height:0}
+#qwrap iframe{flex:1;width:100%;height:100%;border:0;background:#fff}
 
 /* Ajustes */
 .mrow{display:grid;grid-template-columns:1fr auto;gap:8px;padding:12px 14px;border-top:1px solid var(--linea);align-items:center}
@@ -195,6 +210,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 import { firebaseConfig } from "./firebase-config.js"; // tu configuración vive en ese archivo
 
 const DOMINIO = "@laquiniela.app";
+const QUINIELA_URL = "/Quiniela-2026-2027/"; // dirección de la quiniela en GitHub Pages
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -216,7 +232,7 @@ const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto"
 const MES_C = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 
 /* ---------- Estado ---------- */
-const S = { uid:null, yo:null, esAdmin:false, miembros:[], lunes:null, dias:{}, vista:"mia", diaSel:null,
+const S = { uid:null, yo:null, esAdmin:false, miembros:[], lunes:null, dias:{}, vista:"hub", diaSel:null, esJugador:false, nombreQ:"", q:null,
             unsubDias:null, unsubMiem:null, parts:null, nu:{ u:"", n:"", p:"", t:"casa" } };
 
 /* ---------- Utilidades ---------- */
@@ -245,24 +261,31 @@ function toast(m) {
 }
 
 /* ---------- Sesión ---------- */
+const lunesDefecto = () => { const h = new Date(); return lunesDe(h.getDay() === 0 ? addDays(h, 1) : h); }; // el domingo ya se mira la semana siguiente
+
 onAuthStateChanged(auth, async u => {
   limpiar();
   if (!u) { pintarLogin(); return; }
   S.uid = u.uid;
-  try { const p = await getDoc(doc(db, "participantes", u.uid)); S.esAdmin = p.exists() && p.data().esAdmin === true; } catch { S.esAdmin = false; }
+  try {
+    const p = await getDoc(doc(db, "participantes", u.uid));
+    S.esJugador = p.exists();
+    S.esAdmin = p.exists() && p.data().esAdmin === true;
+    if (p.exists()) S.nombreQ = p.data().nombre || p.data().usuario || "";
+  } catch { S.esAdmin = false; S.esJugador = false; }
   try { const d = await getDoc(doc(db, "famileo_miembros", u.uid)); S.yo = d.exists() ? { id:d.id, ...d.data() } : null; } catch { S.yo = null; }
-  if (!S.yo && !S.esAdmin) { pintarSinAlta(); return; }
-  const hoy = new Date();
-  S.lunes = lunesDe(hoy.getDay() === 0 ? addDays(hoy, 1) : hoy); // el domingo ya se mira la semana siguiente
-  S.vista = S.yo ? "mia" : "admin";
+  if (!S.yo && !S.esJugador && !S.esAdmin) { pintarSinAlta(); return; }
+  S.lunes = lunesDefecto();
+  S.vista = "hub";
   pintarApp();
   escucharMiembros();
   if (S.yo) escucharSemana();
+  if (S.esJugador) cargarEstadoQuiniela();
 });
 
 function limpiar() {
   S.unsubDias?.(); S.unsubMiem?.();
-  Object.assign(S, { uid:null, yo:null, esAdmin:false, miembros:[], dias:{}, unsubDias:null, unsubMiem:null, parts:null, diaSel:null });
+  Object.assign(S, { uid:null, yo:null, esAdmin:false, miembros:[], dias:{}, unsubDias:null, unsubMiem:null, parts:null, diaSel:null, esJugador:false, nombreQ:"", q:null, vista:"hub" });
   cerrarSheet();
 }
 
@@ -293,14 +316,14 @@ function pintarLogin() {
   document.body.innerHTML = `<div class="azulejo"></div>
   <main class="login">
     <h1 class="marca">Famileo</h1>
-    <p class="lema">Quién come y quién cena en casa, semana a semana.</p>
+    <p class="lema">La app de la familia.</p>
     <form id="flogin" novalidate>
       <label class="campo">Usuario<input id="lu" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
       <label class="campo">Contraseña<input id="lp" type="password" autocomplete="current-password" required></label>
       <p class="err" id="lerr" hidden></p>
       <button class="btn prim ancho" type="submit">Entrar</button>
     </form>
-    <p class="pista">Si juegas a la quiniela, es el mismo usuario y la misma contraseña.</p>
+    <p class="pista">Entra con tu usuario de siempre, el mismo de la quiniela.</p>
   </main>`;
   $("#flogin").addEventListener("submit", async e => {
     e.preventDefault();
@@ -326,26 +349,88 @@ function pintarSinAlta() {
 function pintarApp() {
   document.body.innerHTML = `
   <header class="cab"><div class="azulejo"></div>
-    <div class="fila1"><h1 class="marca">Famileo</h1>
-      <div class="yo"><span id="yo-n"></span><button class="lnk" data-act="salir">Salir</button></div></div>
+    <div class="fila1">
+      <div class="izq"><button class="volver" id="volver" data-v="hub">‹ Inicio</button><h1 class="marca" id="titulo">Famileo</h1></div>
+      <div class="yo" id="yo"><span id="yo-n"></span><button class="lnk" data-act="salir">Salir</button></div></div>
     <div class="seg" id="seg"><button data-v="mia">Mi semana</button><button data-v="casa">Toda la casa</button></div>
   </header>
   <main class="vista" id="view"></main>
-  ${S.esAdmin ? `<nav class="nav" id="nav"><button data-v="mia">🗓️ La Planilla</button><button data-v="admin">⚙️ Ajustes</button></nav>` : ""}`;
+  <div id="qwrap" hidden><iframe id="qframe" title="La Quiniela"></iframe></div>`;
   render();
+}
+
+function setVista(v) {
+  if (v === "hub") {
+    if (S.yo && iso(S.lunes) !== iso(lunesDefecto())) { S.lunes = lunesDefecto(); S.diaSel = null; escucharSemana(); }
+    if (S.esJugador) cargarEstadoQuiniela();
+  }
+  S.vista = v; render(); scrollTo(0, 0);
 }
 
 /* ---------- Render ---------- */
 function render() {
   const view = $("#view"); if (!view) return;
-  const v = S.vista, enPlanilla = v === "mia" || v === "casa";
-  $("#yo-n").textContent = S.yo?.nombre || "";
+  const v = S.vista, enPlanilla = v === "mia" || v === "casa", q = v === "quiniela";
+  $("#yo-n").textContent = S.yo?.nombre || S.nombreQ || "";
+  $("#yo").hidden = v !== "hub";
+  $("#volver").hidden = v === "hub";
+  $("#titulo").textContent = { hub:"Famileo", admin:"Ajustes", quiniela:"La Quiniela" }[v] || "La Planilla";
   $("#seg").hidden = !enPlanilla || !S.yo;
   document.querySelectorAll("#seg button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
-  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.v === "admin" ? v === "admin" : enPlanilla));
-  if (v === "admin") view.innerHTML = vAdmin();
+  document.body.classList.toggle("modo-q", q);
+  $("#qwrap").hidden = !q; view.hidden = q;
+  if (q) { const f = $("#qframe"); if (!f.dataset.cargado) { f.src = QUINIELA_URL; f.dataset.cargado = "1"; } return; }
+  if (v === "hub") view.innerHTML = vHub();
+  else if (v === "admin") view.innerHTML = vAdmin();
   else if (!S.yo) view.innerHTML = `<div class="aviso mal"><p>Añádete a la familia en Ajustes para ver la planilla.</p></div>`;
   else view.innerHTML = v === "casa" ? vCasa() : vMia();
+}
+
+/* --- Panel de inicio --- */
+function estadoPlanilla() {
+  if (S.yo.tipo === "fuera") return "Apúntate cuando vengas a comer o a cenar";
+  const hoy = hoyIso(); let n = 0;
+  for (const f of fechasSemana()) if (f >= hoy) for (const c of COMIDAS) if (!entrada(f, S.uid, c)) n++;
+  return n ? (n === 1 ? "Te falta 1 casilla por rellenar" : `Te faltan ${n} casillas por rellenar`) : "Tienes la semana completa";
+}
+
+async function cargarEstadoQuiniela() {
+  try {
+    const est = await getDoc(doc(db, "config", "estado"));
+    const jid = est.exists() ? est.data().jornadaActual : null;
+    if (!jid) { S.q = null; render(); return; }
+    const j = await getDoc(doc(db, "jornadas", jid));
+    if (!j.exists()) { S.q = null; render(); return; }
+    const d = j.data();
+    const cierre = d.cierre?.toDate ? d.cierre.toDate() : (d.cierre ? new Date(d.cierre) : null);
+    const juegan = Array.isArray(d.juegan) ? d.juegan : [];
+    let hecho = false;
+    try { hecho = (await getDoc(doc(db, "jornadas", jid, "pronosticos", S.uid))).exists(); } catch {}
+    S.q = { num: d.numero || parseInt(String(jid).replace(/\D/g, ""), 10) || "", cierre, juega: !juegan.length || juegan.includes(S.uid), hecho };
+  } catch { S.q = null; }
+  if (S.vista === "hub") render();
+}
+
+function estadoQuiniela() {
+  const q = S.q;
+  if (!q) return "Pronósticos, clasificación y tablas";
+  const j = `Jornada ${q.num}`;
+  if (q.cierre && new Date() < q.cierre) {
+    const c = q.cierre, h = `${DIAS[(c.getDay()+6)%7].toLowerCase()} ${c.getDate()}, ${pad(c.getHours())}:${pad(c.getMinutes())}`;
+    if (!q.juega) return `${j}: esta vez descansas`;
+    return q.hecho ? `${j}: ya la tienes hecha ✓` : `${j}: te falta rellenarla. Cierra el ${h}`;
+  }
+  return `${j}: cerrada, ya se ven los pronósticos`;
+}
+
+function vHub() {
+  const nombre = S.yo?.nombre || S.nombreQ || "";
+  const tiles = [];
+  if (S.yo) tiles.push(`<button class="tile t-plan" data-v="mia"><span class="ti-ic">🍽️</span><span class="ti-t">La Planilla</span><span class="ti-s">${esc(estadoPlanilla())}</span></button>`);
+  if (S.esJugador) tiles.push(`<button class="tile t-quin" data-v="quiniela"><span class="ti-ic">⚽</span><span class="ti-t">La Quiniela</span><span class="ti-s">${esc(estadoQuiniela())}</span></button>`);
+  return `<p class="saludo">${nombre ? `Hola, ${esc(nombre)}` : "Hola"}</p>
+    <div class="tiles">${tiles.join("")}</div>
+    ${S.esAdmin ? `<button class="btn ancho" data-v="admin">⚙️ Ajustes de Famileo</button>` : ""}`;
 }
 
 function semNav() {
@@ -647,7 +732,7 @@ async function crearUsuario() {
 document.addEventListener("click", ev => {
   const b = ev.target.closest("[data-act],[data-v]");
   if (!b || b.closest(".hoja")) return;
-  if (b.dataset.v) { S.vista = b.dataset.v; render(); scrollTo(0, 0); return; }
+  if (b.dataset.v) { setVista(b.dataset.v); return; }
   const d = b.dataset;
   switch (d.act) {
     case "prev": cambiarSemana(-1); break;
