@@ -208,7 +208,7 @@ body.modo-q .marca{font-size:22px}
 
 <script type="module">
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword }
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, EmailAuthProvider, reauthenticateWithCredential, updatePassword }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, onSnapshot, query, where,
   documentId, serverTimestamp, deleteField, writeBatch }
@@ -242,7 +242,7 @@ const MES_C = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov"
 
 /* ---------- Estado ---------- */
 const S = { uid:null, yo:null, esAdmin:false, miembros:[], lunes:null, dias:{}, vista:"hub", diaSel:null, esJugador:false, nombreQ:"", q:null,
-            unsubDias:null, unsubMiem:null, parts:null, nu:{ u:"", n:"", p:"", t:"casa" } };
+            unsubDias:null, unsubMiem:null, parts:null, nu:{ u:"", n:"", id:"", t:"casa" } };
 
 /* ---------- Utilidades ---------- */
 const $ = s => document.querySelector(s);
@@ -509,6 +509,7 @@ function vHub() {
   return bannerInstalar() + `<p class="saludo">${nombre ? `Hola, ${esc(nombre)}` : "Hola"}</p>
     <div class="tiles">${tiles.join("")}</div>
     ${bloqueAvisos()}
+    <p style="margin:4px 0 12px"><button class="lnk" data-act="clave">🔑 Cambiar mi contraseña</button></p>
     ${S.esAdmin ? `<button class="btn ancho" data-v="admin">⚙️ Ajustes de OlApp</button>` : ""}`;
 }
 
@@ -650,15 +651,16 @@ function vAdmin() {
   <section class="bloque"><h2>Familia en OlApp</h2>
     <div class="filas">${filas || `<p class="vacio-txt">Todavía no hay nadie. Empieza añadiendo gente desde la quiniela.</p>`}</div></section>
   <section class="bloque"><h2>Añadir desde la quiniela</h2>${parts}</section>
-  <section class="bloque"><h2>Crear un usuario nuevo</h2>
+  <section class="bloque"><h2>Dar de alta a alguien nuevo</h2>
     <div class="panel">
+      <p class="pista" style="margin-top:12px">Por seguridad, las cuentas nuevas se crean en la consola de Firebase: <b>Authentication → Users → Agregar usuario</b>, con el correo <b>usuario@laquiniela.app</b> y una contraseña. Después copia su <b>UID</b> de la lista y rellena esto:</p>
       <label class="campo">Nombre que se verá<input id="nu-n" value="${esc(nu.n)}" placeholder="Papá"></label>
       <label class="campo">Usuario para entrar<input id="nu-u" value="${esc(nu.u)}" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="papa"></label>
-      <label class="campo">Contraseña (mínimo 6 caracteres)<input id="nu-p" value="${esc(nu.p)}" autocomplete="new-password"></label>
+      <label class="campo">UID de Firebase<input id="nu-id" value="${esc(nu.id || "")}" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
       <label class="campo">Dónde vive<select id="nu-t">
         <option value="casa" ${nu.t === "casa" ? "selected" : ""}>Vive en casa</option>
         <option value="fuera" ${nu.t === "fuera" ? "selected" : ""}>Viene de fuera</option></select></label>
-      <button class="btn prim ancho" style="margin-top:16px" data-act="crear">Crear usuario</button>
+      <button class="btn prim ancho" style="margin-top:16px" data-act="crear">Dar de alta en OlApp</button>
     </div></section>`;
 }
 
@@ -791,20 +793,37 @@ async function quitarMiembro(id) {
 }
 
 async function crearUsuario() {
-  const { u, n, p, t } = S.nu, usuario = u.trim().toLowerCase();
-  if (!/^[a-z0-9._-]{2,}$/.test(usuario)) { toast("Usuario: solo minúsculas, números, punto o guion."); return; }
-  if (p.length < 6) { toast("La contraseña necesita al menos 6 caracteres."); return; }
-  const sec = getApps().find(a => a.name === "alta") || initializeApp(firebaseConfig, "alta");
-  const sa = getAuth(sec);
+  const { u, n, t } = S.nu, usuario = u.trim().toLowerCase(), uid = (S.nu.id || "").trim();
+  if (!usuario) { toast("Escribe el usuario con el que entrará."); return; }
+  if (!/^[A-Za-z0-9]{20,40}$/.test(uid)) { toast("Pega el UID tal cual aparece en Firebase (unas 28 letras y números)."); return; }
   try {
-    const cred = await createUserWithEmailAndPassword(sa, usuario + DOMINIO, p);
-    await setDoc(doc(db, "famileo_miembros", cred.user.uid), { nombre: n.trim() || usuario, usuario, tipo: t, editora: false, orden: S.miembros.length + 1 });
-    await signOut(sa);
-    S.nu = { u:"", n:"", p:"", t:"casa" };
-    toast(`Listo: ${n.trim() || usuario} ya puede entrar con el usuario «${usuario}».`); render();
-  } catch (e) {
-    toast(e.code === "auth/email-already-in-use" ? "Ese usuario ya existe: añádelo desde la lista de la quiniela." : "No se pudo crear (" + e.code + ").");
-  }
+    await setDoc(doc(db, "famileo_miembros", uid), { nombre: n.trim() || usuario, usuario, tipo: t, editora: false, orden: S.miembros.length + 1 });
+    S.nu = { u:"", n:"", id:"", t:"casa" };
+    toast(`Listo: ${n.trim() || usuario} ya está en OlApp.`); render();
+  } catch (e) { toast("No se pudo dar de alta (" + e.code + ")."); }
+}
+
+/* ---------- Cambiar contraseña ---------- */
+function abrirClave() {
+  abrirSheet(`<h3>Cambiar contraseña</h3><p class="sub">Elige una que no uses en otros sitios.</p>
+    <label class="campo">Contraseña actual<input id="cl-a" type="password" autocomplete="current-password"></label>
+    <label class="campo">Contraseña nueva (mínimo 8 caracteres)<input id="cl-n" type="password" autocomplete="new-password"></label>
+    <label class="campo">Repite la nueva<input id="cl-r" type="password" autocomplete="new-password"></label>
+    <div class="pie"><button class="btn" data-act="cerrar">Cancelar</button><button class="btn prim" data-act="cl-ok">Guardar</button></div>`,
+  async (ev, v) => {
+    if (!ev.target.closest('[data-act="cl-ok"]')) return;
+    const a = v.querySelector("#cl-a").value, n = v.querySelector("#cl-n").value, r = v.querySelector("#cl-r").value;
+    if (n.length < 8) { toast("La nueva necesita al menos 8 caracteres."); return; }
+    if (n !== r) { toast("Las dos contraseñas nuevas no coinciden."); return; }
+    try {
+      const u = auth.currentUser;
+      await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, a));
+      await updatePassword(u, n);
+      cerrarSheet(); toast("Contraseña cambiada.");
+    } catch (e) {
+      toast(["auth/invalid-credential", "auth/wrong-password"].includes(e.code) ? "La contraseña actual no es correcta." : "No se pudo cambiar (" + e.code + ").");
+    }
+  });
 }
 
 /* ---------- Eventos globales ---------- */
@@ -830,11 +849,12 @@ document.addEventListener("click", ev => {
     case "add-part": anadirParticipante(d.id); break;
     case "quitar-m": quitarMiembro(d.id); break;
     case "crear": crearUsuario(); break;
+    case "clave": abrirClave(); break;
   }
 });
 
 document.addEventListener("input", ev => {
-  const k = { "nu-u":"u", "nu-n":"n", "nu-p":"p", "nu-t":"t" }[ev.target.id];
+  const k = { "nu-u":"u", "nu-n":"n", "nu-id":"id", "nu-t":"t" }[ev.target.id];
   if (k) S.nu[k] = ev.target.value;
 });
 
