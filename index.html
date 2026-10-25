@@ -190,6 +190,20 @@ body.modo-q .marca{font-size:22px}
 .prow:first-child{border-top:0}
 .panel{background:var(--papel);border:1px solid var(--linea);border-radius:14px;padding:4px 14px 16px}
 
+/* Configuración de avisos */
+.av-card{background:var(--papel);border:1px solid var(--linea);border-radius:14px;padding:14px;margin-bottom:12px}
+.av-card.off{opacity:.6}
+.av-cab{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.av-cab b{font-size:16px}
+.av-sub{font-size:13px;color:var(--suave);margin:2px 0 6px}
+.av-fila{display:flex;gap:10px;flex-wrap:wrap}
+.av-fila label.campo{flex:1 1 120px}
+textarea{font:inherit;color:var(--tinta);background:var(--fondo);border:1px solid var(--linea);border-radius:10px;padding:10px 12px;width:100%;margin-top:4px;min-height:64px;resize:vertical}
+.av-vars{font-size:12px;color:var(--suave);margin-top:6px}
+.av-vars code{background:var(--fondo);padding:1px 5px;border-radius:5px}
+.av-pie{position:sticky;bottom:0;background:var(--fondo);padding:10px 0 4px;display:flex;gap:8px}
+.av-pie .btn{flex:1}
+
 /* Entrada */
 .login{max-width:380px;margin:0 auto;padding:56px 22px}
 .login .marca{font-size:56px}
@@ -296,6 +310,73 @@ onAuthStateChanged(auth, async u => {
   if (S.avisos === "activados") guardarToken().catch(() => {});
   render();
 });
+
+const AV_DEF = {
+  resumen:     { activo:true, hora:"09:00", titulo:"Resumen de hoy", texto:"{resumen}" },
+  comida:      { activo:true, hora:"13:00", titulo:"¿Comes hoy en casa?", texto:"Todavía no has puesto en la planilla si comes hoy." },
+  cena:        { activo:true, hora:"20:00", titulo:"¿Cenas hoy en casa?", texto:"Todavía no has puesto en la planilla si cenas hoy." },
+  semanal:     { activo:true, dia:0, hora:"20:00", titulo:"Rellena la planilla", texto:"Te faltan {casillas} casillas de la semana que viene." },
+  cambios:     { activo:true, titulo:"Cambio en la planilla de {cuando}", texto:"{cambios}" },
+  qNueva:      { activo:true, titulo:"Jornada {jornada} publicada", texto:"Ya puedes hacer tu quiniela. Cierra el {cierre}." },
+  qAntes:      { activo:true, minutos:60, titulo:"Jornada {jornada}: queda poco", texto:"Todavía no has hecho tu quiniela. Cierra a las {hora}." },
+  qCerrada:    { activo:true, titulo:"Jornada {jornada} cerrada", texto:"Ya se pueden ver los pronósticos de todos." },
+  qResultados: { activo:true, titulo:"Jornada {jornada}: resultados completos", texto:"Ya están los 14 resultados y el pleno al 15. Mira cómo ha quedado la jornada." },
+  qTablas:     { activo:true, titulo:"Tablas actualizadas", texto:"Se han actualizado los resultados reales de las tablas. Mira cómo vas." }
+};
+const AV_INFO = [
+  ["La Planilla", [
+    ["resumen", "Resumen del día", "A quien tiene «Edita a todos», cada mañana.", ["resumen"]],
+    ["comida", "Recordatorio de la comida", "A los de casa que no han puesto si comen hoy.", []],
+    ["cena", "Recordatorio de la cena", "A los de casa que no han puesto si cenan hoy.", []],
+    ["semanal", "Recordatorio de la semana", "A los de casa con huecos en la semana siguiente.", ["casillas"]],
+    ["cambios", "Cambios de hoy o mañana", "A quien tiene «Edita a todos», cuando alguien cambia algo.", ["cuando", "cambios"]]]],
+  ["La Quiniela", [
+    ["qNueva", "Nueva jornada", "A todos los jugadores, al publicarla.", ["jornada", "cierre"]],
+    ["qAntes", "Antes del cierre", "Solo a quien juega y no la ha hecho.", ["jornada", "hora"]],
+    ["qCerrada", "Jornada cerrada", "A todos, cuando se ven los pronósticos.", ["jornada"]],
+    ["qResultados", "Resultados completos", "A todos, con los 14 resultados y el pleno.", ["jornada"]],
+    ["qTablas", "Tablas actualizadas", "A todos (como mucho uno por hora).", []]]]
+];
+const HORAS = []; for (let h = 0; h < 24; h++) for (const m of [0, 15, 30, 45]) HORAS.push(`${pad(h)}:${pad(m)}`);
+const DIAS_SEM = [[1,"Lunes"],[2,"Martes"],[3,"Miércoles"],[4,"Jueves"],[5,"Viernes"],[6,"Sábado"],[0,"Domingo"]];
+
+async function abrirAvisos() {
+  let g = {};
+  try { g = (await getDoc(doc(db, "famileo_config", "avisos"))).data() || {}; }
+  catch (e) { toast("No se pudo leer la configuración (" + e.code + ")."); return; }
+  S.cfg = {}; for (const k of Object.keys(AV_DEF)) S.cfg[k] = { ...AV_DEF[k], ...(g[k] || {}) };
+  $("#view").dataset.pintado = ""; setVista("avisos");
+}
+
+function vAvisos() {
+  const sel = (k, f, opts, val) => `<select data-k="${k}" data-f="${f}">${opts.map(([v, t]) => `<option value="${v}"${String(v) === String(val) ? " selected" : ""}>${t}</option>`).join("")}</select>`;
+  let h = `<p class="pista" style="margin-top:0">Cambia horas y textos de los avisos. Los cambios valen desde el siguiente aviso, sin tocar nada más. Las horas van de 15 en 15 minutos.</p>`;
+  for (const [grupo, items] of AV_INFO) {
+    h += `<section class="bloque"><h2>${grupo}</h2>`;
+    for (const [k, nombre, quien, vars] of items) {
+      const c = S.cfg[k];
+      let tiempo = "";
+      if ("hora" in c) tiempo += `<label class="campo">Hora${sel(k, "hora", HORAS.map(x => [x, x]), c.hora)}</label>`;
+      if ("dia" in c) tiempo = `<label class="campo">Día${sel(k, "dia", DIAS_SEM, c.dia)}</label>` + tiempo;
+      if ("minutos" in c) tiempo += `<label class="campo">Cuánto antes${sel(k, "minutos", [[15,"15 minutos"],[30,"30 minutos"],[45,"45 minutos"],[60,"1 hora"],[90,"1 h 30 min"],[120,"2 horas"],[180,"3 horas"],[240,"4 horas"]], c.minutos)}</label>`;
+      h += `<div class="av-card${c.activo ? "" : " off"}">
+        <div class="av-cab"><b>${nombre}</b><label class="chk"><input type="checkbox" data-k="${k}" data-f="activo" ${c.activo ? "checked" : ""}> Activo</label></div>
+        <p class="av-sub">${quien}</p>
+        ${tiempo ? `<div class="av-fila">${tiempo}</div>` : ""}
+        <label class="campo">Título<input data-k="${k}" data-f="titulo" value="${esc(c.titulo)}" maxlength="80"></label>
+        <label class="campo">Texto<textarea data-k="${k}" data-f="texto" maxlength="300">${esc(c.texto)}</textarea></label>
+        ${vars.length ? `<p class="av-vars">Puedes usar: ${vars.map(v => `<code>{${v}}</code>`).join(" ")}</p>` : ""}
+      </div>`;
+    }
+    h += `</section>`;
+  }
+  return h + `<div class="av-pie"><button class="btn" data-act="av-def">Restaurar originales</button><button class="btn prim" data-act="av-guardar">Guardar cambios</button></div>`;
+}
+
+async function guardarAvisos() {
+  try { await setDoc(doc(db, "famileo_config", "avisos"), S.cfg); toast("Avisos guardados."); }
+  catch (e) { toast("No se pudo guardar (" + e.code + ")."); }
+}
 
 const ICONOS = { javi:"javier", dani:"daniel", leti:"leticia", andres:"andres", tomas:"tomas",
                  luis:"luis", jorge:"jorge", jose:"jose", cristina:"cristina", fernando:"fernando" };
@@ -452,12 +533,14 @@ function render() {
   $("#yo-n").textContent = S.yo?.nombre || S.nombreQ || "";
   $("#yo").hidden = v !== "hub";
   $("#volver").hidden = v === "hub";
-  $("#titulo").textContent = { hub:"OlApp", admin:"Ajustes", quiniela:"La Quiniela" }[v] || "La Planilla";
+  $("#titulo").textContent = { hub:"OlApp", admin:"Ajustes", quiniela:"La Quiniela", avisos:"Avisos" }[v] || "La Planilla";
   $("#seg").hidden = !enPlanilla || !S.yo;
   document.querySelectorAll("#seg button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
   document.body.classList.toggle("modo-q", q);
   $("#qwrap").hidden = !q; view.hidden = q;
   if (q) { const f = $("#qframe"); if (!f.dataset.cargado) { f.src = QUINIELA_URL; f.dataset.cargado = "1"; } return; }
+  if (v !== "avisos") view.dataset.pintado = "";
+  if (v === "avisos") { if (!view.dataset.pintado) { view.innerHTML = vAvisos(); view.dataset.pintado = "1"; } return; }
   if (v === "hub") view.innerHTML = vHub();
   else if (v === "admin") view.innerHTML = vAdmin();
   else if (!S.yo) view.innerHTML = `<div class="aviso mal"><p>Añádete a la familia en Ajustes para ver la planilla.</p></div>`;
@@ -648,6 +731,7 @@ function vAdmin() {
       : `<p class="pista">Todos los jugadores de la quiniela ya están en OlApp.</p>`;
   const nu = S.nu;
   return `${faltoYo}
+  <button class="btn prim ancho" data-act="cfg-avisos" style="margin-bottom:18px">🔔 Configurar avisos (horas y textos)</button>
   <section class="bloque"><h2>Familia en OlApp</h2>
     <div class="filas">${filas || `<p class="vacio-txt">Todavía no hay nadie. Empieza añadiendo gente desde la quiniela.</p>`}</div></section>
   <section class="bloque"><h2>Añadir desde la quiniela</h2>${parts}</section>
@@ -850,15 +934,28 @@ document.addEventListener("click", ev => {
     case "quitar-m": quitarMiembro(d.id); break;
     case "crear": crearUsuario(); break;
     case "clave": abrirClave(); break;
+    case "cfg-avisos": abrirAvisos(); break;
+    case "av-guardar": guardarAvisos(); break;
+    case "av-def": if (confirm("¿Volver a los textos y horas originales? Tendrás que pulsar Guardar.")) {
+      S.cfg = JSON.parse(JSON.stringify(AV_DEF)); $("#view").dataset.pintado = ""; render(); } break;
   }
 });
 
+function campoAviso(t) {
+  const k = t.dataset.k, f = t.dataset.f; if (!k || !f || !S.cfg) return false;
+  if (f === "activo") { S.cfg[k].activo = t.checked; t.closest(".av-card")?.classList.toggle("off", !t.checked); }
+  else if (f === "dia" || f === "minutos") S.cfg[k][f] = Number(t.value);
+  else S.cfg[k][f] = t.value;
+  return true;
+}
 document.addEventListener("input", ev => {
+  if (campoAviso(ev.target)) return;
   const k = { "nu-u":"u", "nu-n":"n", "nu-id":"id", "nu-t":"t" }[ev.target.id];
   if (k) S.nu[k] = ev.target.value;
 });
 
 document.addEventListener("change", async ev => {
+  if (campoAviso(ev.target)) return;
   const t = ev.target, id = t.dataset.id; if (!id) return;
   let upd = null;
   if (t.classList.contains("m-nom")) upd = { nombre: t.value.trim() || "Sin nombre" };
